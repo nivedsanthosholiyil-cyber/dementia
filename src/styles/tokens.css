@@ -1,0 +1,166 @@
+/* ============================================================
+   MemoryCare — Design Tokens
+   Palette & type scale derived from the Stitch design system.
+   Warm daylight optimism · calm forest credibility · senior legibility
+   ============================================================ */
+
+:root {
+  /* --- Surfaces (warm off-white greens) --- */
+  --surface: #f1fcf2;
+  --surface-bright: #f6fff7;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #ebf7ed;
+  --surface-container: #e5f1e7;
+  --surface-container-high: #e0ebe1;
+  --surface-container-highest: #dae5dc;
+  --surface-variant: #dae5dc;
+
+  /* --- Text --- */
+  --on-surface: #141e18;
+  --on-surface-variant: #4a5750;
+  --on-surface-muted: #6b7a72;
+
+  /* --- Forest green (primary confirming actions / nav) --- */
+  --secondary: #1b6b45;
+  --secondary-dark: #125434;
+  --on-secondary: #ffffff;
+  --secondary-container: #a0eebd;
+  --secondary-container-soft: #cdeed9;
+  --on-secondary-container: #12543a;
+  --secondary-fixed: #a5f3c2;
+  --secondary-fixed-dim: #8ad7a7;
+
+  /* --- Golden amber (positive habit / audio / accent) --- */
+  --primary: #835500;
+  --primary-container: #f5a623;
+  --primary-container-dim: #ffb955;
+  --on-primary-container: #644000;
+  --primary-fixed: #ffddb4;
+  --primary-fixed-soft: #fdeccb;
+  --on-primary-fixed: #4a2f00;
+
+  /* --- Terracotta / alert --- */
+  --tertiary: #ac3231;
+  --tertiary-container: #ffd9d5;
+  --on-tertiary-container: #8c1a1d;
+  --error: #ba1a1a;
+  --error-container: #ffdad6;
+  --on-error-container: #93000a;
+
+  /* --- Lines & outlines --- */
+  --outline: #857462;
+  --outline-variant: #cdd9cf;
+  --border-card: #e2ece4;
+  --border-strong: #cfe0d3;
+
+  /* --- Radii --- */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* --- Spacing (8px baseline) --- */
+  --space-xxs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+
+  /* --- Touch targets --- */
+  --touch-min: 3.5rem; /* 56px */
+  --touch-lg: 4rem; /* 64px */
+
+  --content-max: 780px;
+
+  /* --- Elevation (warm low-contrast shadows) --- */
+  --shadow-xs: 0 1px 3px rgba(20, 30, 24, 0.06);
+  --shadow-sm: 0 4px 14px -4px rgba(20, 30, 24, 0.08),
+    0 2px 6px -2px rgba(245, 166, 35, 0.05);
+  --shadow-md: 0 8px 24px -8px rgba(20, 30, 24, 0.12),
+    0 3px 8px -4px rgba(27, 107, 69, 0.06);
+  --shadow-lg: 0 14px 34px -10px rgba(20, 30, 24, 0.18);
+  --shadow-float: 0 10px 28px -6px rgba(20, 30, 24, 0.2);
+
+  /* --- Fonts --- */
+  --font-head: 'Epilogue', 'Public Sans', system-ui, -apple-system, sans-serif;
+  --font-body: 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* --- Accessibility: master scale (changed by Large Text toggle) --- */
+  --font-scale: 1;
+  --tap-scale: 1;
+
+  /* --- Type scale (multiplied by --font-scale) --- */
+  --fs-display: calc(2.5rem * var(--font-scale));
+  --fs-h1: calc(1.9rem * var(--font-scale));
+  --fs-h2: calc(1.5rem * var(--font-scale));
+  --fs-h3: calc(1.25rem * var(--font-scale));
+  --fs-body-xl: calc(1.375rem * var(--font-scale));
+  --fs-body-lg: calc(1.25rem * var(--font-scale));
+  --fs-body: calc(1.125rem * var(--font-scale)); /* 18px base */
+  --fs-label: calc(1.05rem * var(--font-scale));
+  --fs-caption: calc(0.95rem * var(--font-scale));
+}
+
+/* Large-text accessibility mode */
+html[data-large-text='true'] {
+  --font-scale: 1.18;
+}
+
+/* Jumbo touch buttons */
+html[data-jumbo='true'] {
+  --tap-scale: 1.12;
+}
+
+/* High-contrast mode: deepen text & borders, brighten surfaces */
+html[data-contrast='true'] {
+  --surface: #ffffff;
+  --surface-bright: #ffffff;
+  --surface-container-low: #eef7f0;
+  --surface-container: #e4f0e6;
+  --on-surface: #06110b;
+  --on-surface-variant: #22302a;
+  --on-surface-muted: #33413b;
+  --secondary: #0f5533;
+  --border-card: #b7ccbc;
+  --border-strong: #9cbaa4;
+  --outline-variant: #9cbaa4;
+}
+
+html[data-theme='dark'] {
+  --surface: #101814;
+  --surface-bright: #17231c;
+  --surface-container-lowest: #18231d;
+  --surface-container-low: #1d2c24;
+  --surface-container: #26382e;
+  --surface-container-high: #304438;
+  --surface-container-highest: #3a5041;
+  --surface-variant: #304438;
+  --on-surface: #edf8ef;
+  --on-surface-variant: #c5d5ca;
+  --on-surface-muted: #aabbb0;
+  --secondary: #75d99e;
+  --secondary-dark: #a0eebd;
+  --on-secondary: #092817;
+  --secondary-container: #1b6441;
+  --secondary-container-soft: #245a3d;
+  --on-secondary-container: #e0ffea;
+  --primary: #ffcf82;
+  --primary-container: #b67505;
+  --primary-fixed: #5c410c;
+  --primary-fixed-soft: #4d390e;
+  --on-primary-container: #fff2d5;
+  --on-primary-fixed: #fff2d5;
+  --tertiary: #ffb3ad;
+  --tertiary-container: #6e211f;
+  --on-tertiary-container: #ffe9e6;
+  --border-card: #3a5041;
+  --border-strong: #516a59;
+  --outline-variant: #516a59;
+  --shadow-sm: 0 4px 14px -4px rgba(0, 0, 0, .38);
+  --shadow-md: 0 8px 24px -8px rgba(0, 0, 0, .48);
+}
+@media (prefers-color-scheme: dark) { html[data-theme='system'] { color-scheme: dark; --surface: #101814; --surface-bright: #17231c; --surface-container-lowest: #18231d; --surface-container-low: #1d2c24; --surface-container: #26382e; --surface-container-high: #304438; --surface-container-highest: #3a5041; --on-surface: #edf8ef; --on-surface-variant: #c5d5ca; --on-surface-muted: #aabbb0; --secondary: #75d99e; --secondary-dark: #a0eebd; --on-secondary: #092817; --secondary-container: #1b6441; --on-secondary-container: #e0ffea; --primary-container: #b67505; --primary-fixed: #5c410c; --primary-fixed-soft: #4d390e; --on-primary-container: #fff2d5; --on-primary-fixed: #fff2d5; --tertiary: #ffb3ad; --tertiary-container: #6e211f; --on-tertiary-container: #ffe9e6; --border-card: #3a5041; --border-strong: #516a59; --outline-variant: #516a59; } }
