@@ -31,6 +31,12 @@ browser session persistence. It accepts `VITE_SUPABASE_ANON_KEY` (or the newer
 3. In Supabase **Authentication > URL Configuration**, add the Vercel production URL already assigned to this project and local development URLs (for example `http://localhost:5173`) as redirect URLs.
 4. In Vercel **Project > Settings > Environment Variables**, set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (or `VITE_SUPABASE_PUBLISHABLE_KEY`) for Production, Preview, and Development, then redeploy. These are public browser keys; never set `service_role` or another secret as a `VITE_` variable.
 
+The Vite build also normalizes public values from the Supabase/Vercel
+integration when it provides `SUPABASE_URL` plus `SUPABASE_ANON_KEY` (or the
+equivalent `NEXT_PUBLIC_*` names). These are build-time aliases only; the
+browser client still reads `import.meta.env.VITE_*`, and no service-role value
+is accepted or mapped.
+
 Apply `supabase/schema.sql` before using the app. For an existing project,
 apply `supabase/auth_google_migration.sql` afterwards; it preserves existing
 role assignments while enabling first-sign-in role selection for Google users.

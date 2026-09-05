@@ -19,6 +19,7 @@ import { activeProfileFrom, displayName } from '@/utils/profile';
 import { currentAuthContext, onAuthStateChange, signOut } from '@/services/authService';
 import { listAuthorizedPatients } from '@/services/patientService';
 import { supabase } from '@/lib/supabase';
+import { inspectSupabase } from '@/lib/supabaseDiagnostics';
 
 const KEY = 'mc:settings';
 
@@ -74,6 +75,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!supabase) return;
     let live = true;
+    void inspectSupabase().catch(() => undefined);
     const hydrate = async () => {
       try {
         const context = await currentAuthContext();
