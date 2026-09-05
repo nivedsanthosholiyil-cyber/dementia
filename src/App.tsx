@@ -29,6 +29,7 @@ import { People } from '@/pages/People';
 import { Emergency } from '@/pages/Emergency';
 import { CaregiverReminders } from '@/pages/caregiver/CaregiverReminders';
 import { CaregiverEmergency } from '@/pages/caregiver/CaregiverEmergency';
+import { ChooseRole } from '@/pages/ChooseRole';
 
 /** Bridges settings.language into the i18n provider. */
 function I18nBridge({ children }: { children: ReactNode }) {
@@ -38,27 +39,35 @@ function I18nBridge({ children }: { children: ReactNode }) {
 
 /** Redirects to onboarding if the user hasn't completed it. */
 function RequireOnboarded({ children }: { children: ReactNode }) {
-  const { settings } = useSettings();
+  const { settings, authReady } = useSettings();
   const location = useLocation();
+  if (!authReady) return <AuthSplash />;
   if (!settings.onboarded || !settings.authenticated) {
     return <Navigate to="/" replace state={{ from: location.pathname }} />;
+  }
+  if (settings.needsRoleSelection && location.pathname !== '/choose-role') {
+    return <Navigate to="/choose-role" replace />;
   }
   return <>{children}</>;
 }
 
 function RequireCaregiver({ children }: { children: ReactNode }) {
-  const { settings } = useSettings();
+  const { settings, authReady } = useSettings();
   const location = useLocation();
+  if (!authReady) return <AuthSplash />;
   if (!settings.onboarded || !settings.authenticated || settings.role !== 'caregiver') {
     return <Navigate to="/" replace state={{ from: location.pathname }} />;
   }
+  if (settings.needsRoleSelection) return <Navigate to="/choose-role" replace />;
   return <>{children}</>;
 }
 
 /** The landing route decides where an onboarded user should go. */
 function LandingRoute() {
-  const { settings } = useSettings();
+  const { settings, authReady } = useSettings();
+  if (!authReady) return <AuthSplash />;
   if (settings.onboarded && settings.authenticated) {
+    if (settings.needsRoleSelection) return <Navigate to="/choose-role" replace />;
     return (
       <Navigate to={settings.role === 'caregiver' ? '/caregiver' : '/home'} replace />
     );
@@ -66,11 +75,14 @@ function LandingRoute() {
   return <Welcome />;
 }
 
+function AuthSplash() { return <main className="page page--flow"><div className="card text-center stack" role="status"><span className="medallion medallion--green" style={{ alignSelf: 'center' }}>🌿</span><h1>MemoryCare</h1><p className="text-muted">Preparing your secure space…</p></div></main>; }
+
 function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<LandingRoute />} />
       <Route path="/language" element={<LanguageSelect />} />
+      <Route path="/choose-role" element={<RequireOnboarded><ChooseRole /></RequireOnboarded>} />
 
       {/* Patient */}
       <Route

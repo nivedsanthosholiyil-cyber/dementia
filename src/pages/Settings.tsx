@@ -23,7 +23,6 @@ export function Settings() {
     setAccessibility,
     setRole,
     update,
-    updateActiveProfile,
   } = useSettings();
   const { say, supported, enabled } = useVoice();
   const { showToast } = useToast();
@@ -32,8 +31,6 @@ export function Settings() {
   const [langOpen, setLangOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
   const [contactDraft, setContactDraft] = useState(settings.emergencyContact);
-  const [familyOpen, setFamilyOpen] = useState(false);
-  const [caregiverDraft, setCaregiverDraft] = useState(settings.caregiverName);
 
   const a11y = settings.accessibility;
   const overallLevel = getOverallLevel();
@@ -63,12 +60,6 @@ export function Settings() {
   const saveContact = () => {
     update({ emergencyContact: contactDraft.trim() || settings.emergencyContact });
     setContactOpen(false);
-    showToast(t('common.save'), '✓');
-  };
-
-  const saveFamily = () => {
-    if (caregiverDraft.trim()) updateActiveProfile({ caregiverName: caregiverDraft.trim() });
-    setFamilyOpen(false);
     showToast(t('common.save'), '✓');
   };
 
@@ -271,22 +262,8 @@ export function Settings() {
             </button>
           </Card>
           <Card>
-            <button
-              type="button"
-              className="link-row"
-              onClick={() => {
-                setCaregiverDraft(settings.caregiverName);
-                setFamilyOpen(true);
-              }}
-            >
-              <div className="row" style={{ gap: '0.6rem' }}>
-                <Icon name="users" size={22} />
-                <div>
-                  <strong>{t('settings.familyTitle')}</strong>
-                  <div className="muted">{settings.caregiverName}</div>
-                </div>
-              </div>
-              <Icon name="edit" size={20} />
+            <button type="button" className="link-row" onClick={() => navigate('/people')}>
+              <div className="row" style={{ gap: '0.6rem' }}><Icon name="users" size={22} /><div><strong>Family Members</strong><div className="muted">Add, edit, or remove multiple people</div></div></div><Icon name="chevron-right" size={20} />
             </button>
           </Card>
 
@@ -386,27 +363,6 @@ export function Settings() {
         </div>
       </Sheet>
 
-      {/* Family sheet */}
-      <Sheet open={familyOpen} onClose={() => setFamilyOpen(false)} title={t('settings.familyTitle')}>
-        <label className="field-label" htmlFor="fam-input">
-          {t('settings.familyTitle')}
-        </label>
-        <input
-          id="fam-input"
-          className="field-input"
-          value={caregiverDraft}
-          onChange={(e) => setCaregiverDraft(e.target.value)}
-          placeholder="Caregiver name"
-        />
-        <div className="sheet-actions">
-          <Button variant="ghost" onClick={() => setFamilyOpen(false)}>
-            {t('common.cancel')}
-          </Button>
-          <Button icon="check" onClick={saveFamily}>
-            {t('common.save')}
-          </Button>
-        </div>
-      </Sheet>
     </>
   );
 }

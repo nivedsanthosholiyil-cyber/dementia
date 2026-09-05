@@ -11,7 +11,7 @@ import { Toggle } from '@/components/Toggle';
 import { biometricStatus, createProfile, registerPasskey, savePin, verifyPasskey, verifyPin } from '@/services/profileService';
 import { activeProfileFrom, displayName } from '@/utils/profile';
 import { isSupabaseConfigured } from '@/lib/supabase';
-import { signIn, signUp } from '@/services/authService';
+import { signInWithGoogle, signUp } from '@/services/authService';
 import { createPatient } from '@/services/patientService';
 
 export function Welcome() {
@@ -25,6 +25,7 @@ export function Welcome() {
   const [authMessage, setAuthMessage] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const greeting = t(`welcome.${greetingKey()}`);
   const readText = `${greeting}. ${t('welcome.headline')} ${t('welcome.subtitle')}`;
@@ -66,12 +67,10 @@ export function Welcome() {
     completeOnboarding();
     navigate('/caregiver');
   };
-  const cloudLogin = async () => {
-    try {
-      const result = await signIn(email, password);
-      update({ authenticated: true, onboarded: true, role: result.role, userName: result.displayName, caregiverName: result.role === 'caregiver' ? result.displayName : settings.caregiverName });
-      navigate(routeForRole(result.role));
-    } catch (error) { setAuthMessage(error instanceof Error ? error.message : 'Unable to log in.'); }
+  const googleLogin = async () => {
+    setGoogleLoading(true); setAuthMessage('');
+    try { await signInWithGoogle(); }
+    catch (error) { setAuthMessage(error instanceof Error ? error.message : 'Unable to start Google sign-in.'); setGoogleLoading(false); }
   };
   const signInWithPin = async () => {
     if (await verifyPin(pin)) { update({ authenticated: true }); navigate(routeForRole(activeProfileFrom(settings).role)); }
@@ -86,7 +85,9 @@ export function Welcome() {
     catch (error) { setAuthMessage(error instanceof Error ? `Passkey registration failed: ${error.message}` : 'Passkey registration failed.'); }
   };
 
-  if (settings.onboarded && !settings.authenticated) return <><AppHeader /><main className="page page--flow"><div className="stack-sm text-center"><h1>Welcome back, {displayName(activeProfileFrom(settings))}</h1><p className="text-muted">{isSupabaseConfigured ? 'Log in to continue.' : 'Sign in on this device.'}</p></div><div className="card stack-sm">{isSupabaseConfigured ? <><label className="field__label" htmlFor="sign-in-email">Email</label><input id="sign-in-email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} type="email" autoComplete="email" /><label className="field__label" htmlFor="sign-in-password">Password</label><input id="sign-in-password" className="input" value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" /><Button block onClick={() => void cloudLogin()} disabled={!email || !password}>Log in</Button></> : <><label className="field__label" htmlFor="sign-in-pin">PIN</label><input id="sign-in-pin" className="input" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} inputMode="numeric" type="password" /><Button block onClick={signInWithPin}>Use PIN instead</Button>{biometricStatus() === 'supported' ? <><Button variant="secondary" block onClick={signInWithPasskey}>Sign in with Face ID / Passkey</Button><Button variant="ghost" block onClick={setupPasskey}>Set up Face ID / Passkey</Button></> : <p className="muted">Face ID / passkeys are unavailable in this browser or context. Use your PIN instead.</p>}</>}{authMessage && <p role="status" className="muted">{authMessage}</p>}</div></main></>;
+  if (isSupabaseConfigured) return <><AppHeader /><main className="page page--flow"><div className="card stack-lg text-center" style={{ marginTop: 'var(--space-lg)' }}><span className="medallion medallion--green" aria-hidden="true" style={{ alignSelf: 'center', width: '4.5rem', height: '4.5rem', fontSize: '2.25rem' }}>🌿</span><div className="stack-sm"><h1>Welcome to MemoryCare</h1><p className="text-muted">Continue securely to care for yourself or someone you love.</p></div><Button size="lg" block variant="primary" onClick={() => void googleLogin()} disabled={googleLoading}>{googleLoading ? 'Opening Google…' : 'Continue with Google'}</Button><p className="muted">Your account is protected by Supabase Auth.</p>{authMessage && <p role="status" className="banner banner--amber">{authMessage}</p>}</div></main></>;
+
+  if (settings.onboarded && !settings.authenticated) return <><AppHeader /><main className="page page--flow"><div className="stack-sm text-center"><h1>Welcome back, {displayName(activeProfileFrom(settings))}</h1><p className="text-muted">Sign in on this device.</p></div><div className="card stack-sm"><label className="field__label" htmlFor="sign-in-pin">PIN</label><input id="sign-in-pin" className="input" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} inputMode="numeric" type="password" /><Button block onClick={signInWithPin}>Use PIN instead</Button>{biometricStatus() === 'supported' ? <><Button variant="secondary" block onClick={signInWithPasskey}>Sign in with Face ID / Passkey</Button><Button variant="ghost" block onClick={setupPasskey}>Set up Face ID / Passkey</Button></> : <p className="muted">Face ID / passkeys are unavailable in this browser or context. Use your PIN instead.</p>}{authMessage && <p role="status" className="muted">{authMessage}</p>}</div></main></>;
 
   return (
     <>

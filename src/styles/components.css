@@ -264,6 +264,7 @@
   align-items: stretch;
   min-height: 4.75rem;
 }
+@media (max-width: 360px) { .bottom-nav__inner { min-height: 4.25rem; } .nav-item { font-size: .72rem; padding-inline: .1rem; } }
 .nav-item {
   flex: 1;
   display: flex;
@@ -390,6 +391,7 @@
   font-family: var(--font-body);
   width: 100%;
 }
+textarea.input { min-height: 7rem; padding-block: var(--space-sm); resize: vertical; }
 .input:focus,
 .select:focus {
   outline: none;
@@ -600,6 +602,9 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-sm);
   animation: fade-in 0.2s ease;
 }
 @media (min-width: 640px) {
@@ -616,8 +621,9 @@
     calc(var(--space-lg) + env(safe-area-inset-bottom, 0));
   box-shadow: var(--shadow-lg);
   animation: sheet-up 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-  max-height: 90vh;
+  max-height: min(90dvh, 48rem);
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 @media (min-width: 640px) {
   .sheet {
@@ -808,6 +814,8 @@
   gap: var(--space-md);
   padding: var(--space-sm) 0;
 }
+.metric-row > :first-child { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 420px) { .card { padding: var(--space-sm); } .btn { padding-inline: var(--space-md); } .sheet-actions { position: sticky; bottom: calc(var(--space-sm) * -1); background: var(--surface-bright); padding-block: var(--space-sm); } }
 .metric-row + .metric-row {
   border-top: 1.5px solid var(--border-card);
 }

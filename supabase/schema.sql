@@ -15,6 +15,7 @@ create table public.profiles (
   display_name text not null default '',
   language text not null default 'en',
   avatar_path text,
+  role_selected_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -187,11 +188,12 @@ create or replace function private.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public
 as $$
 begin
-  insert into public.profiles (id, role, display_name)
+  insert into public.profiles (id, role, display_name, role_selected_at)
   values (
     new.id,
     case when new.raw_user_meta_data ->> 'requested_role' = 'caregiver' then 'caregiver'::public.app_role else 'patient'::public.app_role end,
-    coalesce(new.raw_user_meta_data ->> 'display_name', new.email, '')
+    coalesce(new.raw_user_meta_data ->> 'display_name', new.raw_user_meta_data ->> 'full_name', new.email, ''),
+    case when new.raw_user_meta_data ->> 'requested_role' in ('patient', 'caregiver') then now() else null end
   )
   on conflict (id) do nothing;
   if exists (select 1 from public.profiles where id = new.id and role = 'caregiver') then
@@ -201,6 +203,35 @@ begin
 end;
 $$;
 revoke all on function private.handle_new_user() from public;
+
+-- A first-time OAuth user may choose their application role. This function can
+-- only ever modify auth.uid(); patient access still requires an active
+-- caregiver_patient relationship and is protected by RLS.
+create or replace function public.select_my_app_role(selected_role public.app_role)
+returns uuid language plpgsql security definer set search_path = public
+as $$
+declare
+  selected_patient_id uuid;
+begin
+  if auth.uid() is null then raise exception 'Authentication required'; end if;
+  update public.profiles
+  set role = selected_role, role_selected_at = now()
+  where id = auth.uid() and role_selected_at is null;
+  if not found then raise exception 'Your application role has already been selected'; end if;
+  if selected_role = 'caregiver' then
+    insert into public.caregivers (id) values (auth.uid()) on conflict (id) do nothing;
+  else
+    insert into public.patients (auth_user_id, name)
+    select auth.uid(), coalesce(nullif(trim(display_name), ''), 'My profile')
+    from public.profiles where id = auth.uid()
+    on conflict (auth_user_id) do update set name = public.patients.name
+    returning id into selected_patient_id;
+  end if;
+  return selected_patient_id;
+end;
+$$;
+revoke all on function public.select_my_app_role(public.app_role) from public;
+grant execute on function public.select_my_app_role(public.app_role) to authenticated;
 
 create trigger on_auth_user_created
   after insert on auth.users
@@ -234,9 +265,8 @@ alter table public.patient_emergency_info enable row level security;
 
 create policy "read own profile" on public.profiles for select to authenticated
   using ((select auth.uid()) = id);
-create policy "update own profile fields" on public.profiles for update to authenticated
-  using ((select auth.uid()) = id)
-  with check ((select auth.uid()) = id and role = (select p.role from public.profiles p where p.id = (select auth.uid())));
+-- Profile role and role_selected_at are intentionally not client-writable.
+-- The one-time select_my_app_role RPC above is the only role mutation path.
 
 create policy "patient owner or linked caregiver can read patients" on public.patients for select to authenticated
   using (private.can_access_patient(id));
@@ -284,9 +314,9 @@ create policy "linked users manage emergency info" on public.patient_emergency_i
 create policy "patient media read" on storage.objects for select to authenticated
   using (bucket_id = 'patient-media' and private.can_access_patient(split_part(name, '/', 1)::uuid));
 create policy "patient media upload" on storage.objects for insert to authenticated
-  with check (bucket_id = 'patient-media' and exists (select 1 from public.patients p where p.id = split_part(name, '/', 1)::uuid and p.auth_user_id = auth.uid()));
+  with check (bucket_id = 'patient-media' and private.can_access_patient(split_part(name, '/', 1)::uuid));
 create policy "patient media update" on storage.objects for update to authenticated
-  using (bucket_id = 'patient-media' and exists (select 1 from public.patients p where p.id = split_part(name, '/', 1)::uuid and p.auth_user_id = auth.uid()))
-  with check (bucket_id = 'patient-media' and exists (select 1 from public.patients p where p.id = split_part(name, '/', 1)::uuid and p.auth_user_id = auth.uid()));
+  using (bucket_id = 'patient-media' and private.can_access_patient(split_part(name, '/', 1)::uuid))
+  with check (bucket_id = 'patient-media' and private.can_access_patient(split_part(name, '/', 1)::uuid));
 create policy "patient media delete" on storage.objects for delete to authenticated
-  using (bucket_id = 'patient-media' and exists (select 1 from public.patients p where p.id = split_part(name, '/', 1)::uuid and p.auth_user_id = auth.uid()));
+  using (bucket_id = 'patient-media' and private.can_access_patient(split_part(name, '/', 1)::uuid));

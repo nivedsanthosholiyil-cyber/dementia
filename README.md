@@ -10,22 +10,35 @@ npm install
 npm run dev      # http://localhost:5173
 ```
 
-## Supabase setup
+## Supabase and Google sign-in
 
-Supabase is prepared as an optional cloud/auth boundary while the app remains
-offline-first. Copy `.env.example` to `.env.local`, add the project URL and
-publishable/anon key, then restart Vite:
+Copy `.env.example` to `.env.local`, add the project URL and publishable/anon
+key, then restart Vite. Never use a service-role key in this app:
 
 ```bash
 cp .env.example .env.local
 npm run dev
 ```
 
-The browser client lives in `src/lib/supabase.ts` and is `null` until both
-variables are present. Apply `supabase/schema.sql` only after reviewing the
-consent and retention policy. Authentication and cloud sync are intentionally
-not wired into the existing UI yet; see `docs/auth-architecture.md` for the
-planned architecture.
+The browser client lives in `src/lib/supabase.ts` and uses Supabase's normal
+browser session persistence. It accepts `VITE_SUPABASE_ANON_KEY` (or the newer
+`VITE_SUPABASE_PUBLISHABLE_KEY`).
+
+### Google OAuth configuration
+
+1. In Google Cloud Console, create an OAuth Web application and add the callback URL shown in Supabase **Authentication > Providers > Google**. Do not put the Google client secret in this repository or Vercel.
+2. In Supabase **Authentication > Providers > Google**, enable Google and paste the Google client ID and client secret there.
+3. In Supabase **Authentication > URL Configuration**, add the Vercel production URL already assigned to this project and local development URLs (for example `http://localhost:5173`) as redirect URLs.
+4. In Vercel **Project > Settings > Environment Variables**, set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (or `VITE_SUPABASE_PUBLISHABLE_KEY`) for Production, Preview, and Development, then redeploy. These are public browser keys; never set `service_role` or another secret as a `VITE_` variable.
+
+Apply `supabase/schema.sql` before using the app. For an existing project,
+apply `supabase/auth_google_migration.sql` afterwards; it preserves existing
+role assignments while enabling first-sign-in role selection for Google users.
+Google accounts create/use
+`auth.users` identities and are authorized solely through the existing
+`profiles`, `patients`, and `caregiver_patient` RLS model. Link caregivers to
+patients through `caregiver_patient`; one caregiver may have multiple active
+links.
 
 ## Production build
 

@@ -77,6 +77,7 @@ export interface AppSettings {
   activePatientId?: string;
   userName?: string;
   authenticated?: boolean;
+  needsRoleSelection?: boolean;
   theme?: ThemePreference;
   activeProfile?: ActiveProfile;
 }

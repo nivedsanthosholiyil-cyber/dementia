@@ -16,7 +16,8 @@ import type {
 import { storageService } from '@/services/storageService';
 import { configureVoice } from '@/services/voiceService';
 import { activeProfileFrom, displayName } from '@/utils/profile';
-import { currentSession, onAuthStateChange, signOut } from '@/services/authService';
+import { currentAuthContext, onAuthStateChange, signOut } from '@/services/authService';
+import { listAuthorizedPatients } from '@/services/patientService';
 import { supabase } from '@/lib/supabase';
 
 const KEY = 'mc:settings';
@@ -52,6 +53,7 @@ interface SettingsContextValue {
   updateActiveProfile: (patch: Partial<ActiveProfile>) => void;
   completeOnboarding: () => void;
   logout: () => void;
+  authReady: boolean;
 }
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -67,13 +69,26 @@ function load(): AppSettings {
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(load);
+  const [authReady, setAuthReady] = useState(!supabase);
 
   useEffect(() => {
     if (!supabase) return;
-    currentSession().then((session) => {
-      setSettings((s) => ({ ...s, authenticated: Boolean(session) }));
-    }).catch(() => undefined);
-    return onAuthStateChange((authenticated) => setSettings((s) => ({ ...s, authenticated })));
+    let live = true;
+    const hydrate = async () => {
+      try {
+        const context = await currentAuthContext();
+        if (!live) return;
+        if (!context) { setSettings((s) => ({ ...s, authenticated: false })); return; }
+        const patients = await listAuthorizedPatients();
+        if (!live) return;
+        const active = patients.find((patient) => patient.id === settings.activePatientId) ?? patients[0];
+        setSettings((s) => ({ ...s, authenticated: true, onboarded: true, needsRoleSelection: context.needsRoleSelection, role: context.role, userName: context.displayName, caregiverName: context.role === 'caregiver' ? context.displayName : s.caregiverName, activePatientId: active?.id ?? s.activePatientId, patientName: active?.name ?? s.patientName, activeProfile: active ? { id: active.id, patientName: active.name, caregiverName: context.role === 'caregiver' ? context.displayName : s.caregiverName, role: context.role } : s.activeProfile }));
+      } catch { if (live) setSettings((s) => ({ ...s, authenticated: false })); }
+      finally { if (live) setAuthReady(true); }
+    };
+    void hydrate();
+    const unsubscribe = onAuthStateChange(() => { setAuthReady(false); void hydrate(); });
+    return () => { live = false; unsubscribe(); };
   }, []);
 
   // Persist on every change.
@@ -125,8 +140,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       }),
       completeOnboarding: () => setSettings((s) => ({ ...s, onboarded: true, authenticated: true })),
       logout: () => { void signOut(); setSettings((s) => ({ ...s, authenticated: false })); },
+      authReady,
     }),
-    [settings],
+    [settings, authReady],
   );
 
   return (
