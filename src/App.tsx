@@ -31,6 +31,7 @@ import { CaregiverReminders } from '@/pages/caregiver/CaregiverReminders';
 import { CaregiverEmergency } from '@/pages/caregiver/CaregiverEmergency';
 import { ChooseRole } from '@/pages/ChooseRole';
 import { ResetPassword } from '@/pages/ResetPassword';
+import { AuthPage } from '@/pages/AuthPage';
 
 /** Bridges settings.language into the i18n provider. */
 function I18nBridge({ children }: { children: ReactNode }) {
@@ -43,7 +44,7 @@ function RequireOnboarded({ children }: { children: ReactNode }) {
   const { settings, authReady } = useSettings();
   const location = useLocation();
   if (!authReady) return <AuthSplash />;
-  if (!settings.onboarded || !settings.authenticated) {
+  if (!settings.onboarded || (!settings.authenticated && !settings.guestMode)) {
     return <Navigate to="/" replace state={{ from: location.pathname }} />;
   }
   if (settings.needsRoleSelection && location.pathname !== '/choose-role') {
@@ -67,6 +68,7 @@ function RequireCaregiver({ children }: { children: ReactNode }) {
 function LandingRoute() {
   const { settings, authReady } = useSettings();
   if (!authReady) return <AuthSplash />;
+  if (settings.guestMode) return <Navigate to="/home" replace />;
   if (settings.onboarded && settings.authenticated) {
     if (settings.needsRoleSelection) return <Navigate to="/choose-role" replace />;
     return (
@@ -82,6 +84,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<LandingRoute />} />
+      <Route path="/auth" element={<AuthPage />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/language" element={<LanguageSelect />} />
       <Route path="/choose-role" element={<RequireOnboarded><ChooseRole /></RequireOnboarded>} />

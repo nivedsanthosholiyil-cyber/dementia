@@ -20,6 +20,7 @@ import { currentAuthContext, onAuthStateChange, signOut } from '@/services/authS
 import { ensureCurrentUserPatient, listAuthorizedPatients } from '@/services/patientService';
 import { supabase } from '@/lib/supabase';
 import { inspectSupabase } from '@/lib/supabaseDiagnostics';
+import { clearGuestData, startGuestMode } from '@/services/guestService';
 
 const KEY = 'mc:settings';
 
@@ -41,6 +42,7 @@ const DEFAULTS: AppSettings = {
   activePatientId: undefined,
   userName: '',
   authenticated: false,
+  guestMode: false,
   theme: 'system',
 };
 
@@ -54,6 +56,8 @@ interface SettingsContextValue {
   updateActiveProfile: (patch: Partial<ActiveProfile>) => void;
   completeOnboarding: () => void;
   logout: () => void;
+  enterGuest: () => Promise<void>;
+  exitGuest: (clearData: boolean) => Promise<void>;
   authReady: boolean;
 }
 
@@ -89,7 +93,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         if (!live) return;
         setSettings((s) => {
           const active = patients.find((patient) => patient.id === s.activePatientId) ?? patients[0];
-          return { ...s, authenticated: true, onboarded: true, needsRoleSelection: context.needsRoleSelection, role: context.role, userName: context.displayName, caregiverName: context.role === 'caregiver' ? context.displayName : s.caregiverName, activePatientId: active?.id ?? s.activePatientId, patientName: active?.name ?? s.patientName, activeProfile: active ? { id: active.id, patientName: active.name, caregiverName: context.role === 'caregiver' ? context.displayName : s.caregiverName, role: context.role } : s.activeProfile };
+          return { ...s, authenticated: true, guestMode: false, onboarded: true, needsRoleSelection: context.needsRoleSelection, role: context.role, userName: context.displayName, caregiverName: context.role === 'caregiver' ? context.displayName : s.caregiverName, activePatientId: active?.id ?? s.activePatientId, patientName: active?.name ?? s.patientName, activeProfile: active ? { id: active.id, patientName: active.name, caregiverName: context.role === 'caregiver' ? context.displayName : s.caregiverName, role: context.role } : s.activeProfile };
         });
       } catch { if (live) setSettings((s) => ({ ...s, authenticated: false })); }
       finally { if (live) setAuthReady(true); }
@@ -147,7 +151,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         };
       }),
       completeOnboarding: () => setSettings((s) => ({ ...s, onboarded: true, authenticated: true })),
-      logout: () => { void signOut(); setSettings((s) => ({ ...s, authenticated: false })); },
+      logout: () => { void signOut(); setSettings((s) => ({ ...s, authenticated: false, guestMode: false })); },
+      enterGuest: async () => {
+        await startGuestMode();
+        setSettings((s) => ({ ...s, authenticated: false, guestMode: true, onboarded: true, role: 'patient', needsRoleSelection: false, userName: 'Guest', patientName: 'Alex Morgan (Demo)', activePatientId: 'guest-demo-patient', activeProfile: { id: 'guest-demo-patient', patientName: 'Alex Morgan (Demo)', caregiverName: '', role: 'patient' } }));
+      },
+      exitGuest: async (clearData) => {
+        if (clearData) await clearGuestData();
+        setSettings((s) => ({ ...s, authenticated: false, guestMode: false, onboarded: false, activePatientId: undefined, activeProfile: undefined, patientName: '', caregiverName: '', userName: '', needsRoleSelection: false }));
+      },
       authReady,
     }),
     [settings, authReady],

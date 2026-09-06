@@ -5,16 +5,17 @@
 // Falls back to localStorage if IndexedDB is unavailable.
 // ============================================================
 
-import type { EmergencyContact, FamilyMember, GameSession, MoodEntry, PatientProfile, Reminder } from '@/types';
+import type { EmergencyContact, FamilyMember, GameSession, MoodEntry, PatientProfile, PersonMemory, Reminder } from '@/types';
 
 const DB_NAME = 'memorycare-db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_SESSIONS = 'gameSessions';
 const STORE_REMINDERS = 'reminders';
 const STORE_PROFILES = 'profiles';
 const STORE_FAMILY = 'familyMembers';
 const STORE_EMERGENCY = 'emergencyContacts';
 const STORE_MOODS = 'moods';
+const STORE_PEOPLE = 'personMemories';
 
 let dbPromise: Promise<IDBDatabase | null> | null = null;
 
@@ -36,7 +37,7 @@ function openDB(): Promise<IDBDatabase | null> {
         if (!db.objectStoreNames.contains(STORE_REMINDERS)) {
           db.createObjectStore(STORE_REMINDERS, { keyPath: 'id' });
         }
-        [STORE_PROFILES, STORE_FAMILY, STORE_EMERGENCY, STORE_MOODS].forEach((store) => {
+        [STORE_PROFILES, STORE_FAMILY, STORE_EMERGENCY, STORE_MOODS, STORE_PEOPLE].forEach((store) => {
           if (!db.objectStoreNames.contains(store)) db.createObjectStore(store, { keyPath: 'id' });
         });
       };
@@ -167,15 +168,19 @@ export const storageService = {
   getMoods: () => idbGetAll<MoodEntry>(STORE_MOODS, 'mc:moods'),
   putMood: (v: MoodEntry) => idbPut<MoodEntry>(STORE_MOODS, 'mc:moods', v),
   deleteMood: (id: string) => idbDelete(STORE_MOODS, 'mc:moods', id),
+  getPersonMemories: () => idbGetAll<PersonMemory>(STORE_PEOPLE, 'mc:person-memories'),
+  putPersonMemory: (v: PersonMemory) => idbPut<PersonMemory>(STORE_PEOPLE, 'mc:person-memories', v),
+  deletePersonMemory: (id: string) => idbDelete(STORE_PEOPLE, 'mc:person-memories', id),
 
   // Lightweight KV
   get: lsGet,
   set: lsSet,
+  remove: (key: string) => { try { localStorage.removeItem(key); } catch { /* unavailable */ } },
   async deletePatientData(patientId: string): Promise<void> {
-    const collections: Array<[string, string]> = [[STORE_SESSIONS, 'mc:sessions'], [STORE_REMINDERS, 'mc:reminders'], [STORE_FAMILY, 'mc:family'], [STORE_EMERGENCY, 'mc:emergency'], [STORE_MOODS, 'mc:moods']];
+    const collections: Array<[string, string]> = [[STORE_SESSIONS, 'mc:sessions'], [STORE_REMINDERS, 'mc:reminders'], [STORE_FAMILY, 'mc:family'], [STORE_EMERGENCY, 'mc:emergency'], [STORE_MOODS, 'mc:moods'], [STORE_PEOPLE, 'mc:person-memories']];
     for (const [store, key] of collections) {
-      const values = await idbGetAll<{ id: string; patientId?: string }>(store, key);
-      await Promise.all(values.filter((v) => v.patientId === patientId).map((v) => idbDelete(store, key, v.id)));
+      const values = await idbGetAll<{ id: string; patientId?: string; patient_id?: string }>(store, key);
+      await Promise.all(values.filter((v) => (v.patientId ?? v.patient_id) === patientId).map((v) => idbDelete(store, key, v.id)));
     }
     await idbDelete(STORE_PROFILES, 'mc:profiles', patientId);
   },

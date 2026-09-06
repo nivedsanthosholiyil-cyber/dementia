@@ -5,11 +5,12 @@ import { createProfile, profiles, removeProfile, updateProfile } from '@/service
 import { useSettings } from '@/hooks/useSettings';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
+import { GUEST_PATIENT_ID } from '@/services/guestService';
 
 export function Profiles() {
   const { settings, updateActiveProfile } = useSettings(); const navigate = useNavigate();
   const [list, setList] = useState<PatientProfile[]>([]); const [name, setName] = useState('');
-  const reload = () => profiles().then(setList); useEffect(() => { reload(); }, []);
+  const reload = () => profiles().then((all) => setList(settings.guestMode ? all.filter((profile) => profile.id === GUEST_PATIENT_ID) : all.filter((profile) => profile.id !== GUEST_PATIENT_ID))); useEffect(() => { reload(); }, [settings.guestMode]);
   const add = async () => { if (!name.trim()) return; const p = await createProfile(name); setName(''); await reload(); select(p); };
   const select = (p: PatientProfile) => updateActiveProfile({ id: p.id, patientName: p.name });
   const rename = async (p: PatientProfile) => { const value = window.prompt('Patient name', p.name)?.trim(); if (!value) return; await updateProfile({ ...p, name: value }); if (settings.activePatientId === p.id) updateActiveProfile({ patientName: value }); reload(); };

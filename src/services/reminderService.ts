@@ -7,9 +7,14 @@ import type { Reminder } from '@/types';
 import { storageService } from './storageService';
 import { localDateKey } from '@/utils/date';
 import { supabase } from '@/lib/supabase';
+import { isGuestPatientId } from './guestService';
 
 function id(): string {
   return `r_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function guestId(): string {
+  return `guest-reminder-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
 /** Default gentle daily reminders (created on first run only). */
@@ -68,7 +73,7 @@ export function defaultReminders(patientId = ''): Reminder[] {
 }
 
 export async function loadReminders(patientId?: string): Promise<Reminder[]> {
-  if (supabase && patientId) {
+  if (supabase && patientId && !isGuestPatientId(patientId)) {
     const { data, error } = await supabase.from('reminders').select('*, reminder_completions(completed_on, completed_at)').eq('patient_id', patientId).order('time_local');
     if (error) throw error;
     return (data ?? []).map((row) => ({ id: row.id, patientId: row.patient_id, title: row.title, detail: row.detail, icon: row.icon, time: String(row.time_local).slice(0, 5), category: row.category, completed: Boolean(row.reminder_completions?.some((c: { completed_on: string }) => c.completed_on === localDateKey())), recurring: row.recurring, repeatDays: row.repeat_days, enabled: row.enabled, completionDates: row.reminder_completions?.map((c: { completed_on: string }) => c.completed_on), createdAt: new Date(row.created_at).getTime(), scheduledDate: row.scheduled_date ?? undefined }));
@@ -84,14 +89,14 @@ export function sortReminders(list: Reminder[]): Reminder[] {
 export async function addReminder(
   data: Omit<Reminder, 'id' | 'completed' | 'createdAt'>,
 ): Promise<Reminder> {
-  if (supabase) {
+  if (supabase && !isGuestPatientId(data.patientId)) {
     const { data: row, error } = await supabase.from('reminders').insert({ patient_id: data.patientId, title: data.title, detail: data.detail, icon: data.icon, time_local: data.time, category: data.category, recurring: data.recurring, repeat_days: data.repeatDays ?? [], enabled: data.enabled ?? true, scheduled_date: data.scheduledDate ?? null }).select().single();
     if (error) throw error;
     return { ...data, id: row.id, completed: false, createdAt: new Date(row.created_at).getTime() };
   }
   const reminder: Reminder = {
     ...data,
-    id: id(),
+    id: isGuestPatientId(data.patientId) ? guestId() : id(),
     completed: false,
     createdAt: Date.now(),
   };
@@ -100,7 +105,7 @@ export async function addReminder(
 }
 
 export async function updateReminder(r: Reminder): Promise<void> {
-  if (supabase) {
+  if (supabase && !isGuestPatientId(r.patientId)) {
     const { error } = await supabase.from('reminders').update({ title: r.title, detail: r.detail, icon: r.icon, time_local: r.time, category: r.category, recurring: r.recurring, repeat_days: r.repeatDays ?? [], enabled: r.enabled ?? true, scheduled_date: r.scheduledDate ?? null }).eq('id', r.id);
     if (error) throw error;
     return;
@@ -111,7 +116,7 @@ export async function updateReminder(r: Reminder): Promise<void> {
 export async function toggleReminder(r: Reminder): Promise<Reminder> {
   const date = localDateKey();
   const complete = !isCompleteForDate(r, date);
-  if (supabase) {
+  if (supabase && !isGuestPatientId(r.patientId)) {
     if (complete) { const { error } = await supabase.from('reminder_completions').upsert({ reminder_id: r.id, completed_on: date }); if (error) throw error; }
     else { const { error } = await supabase.from('reminder_completions').delete().eq('reminder_id', r.id).eq('completed_on', date); if (error) throw error; }
     return { ...r, completed: complete, completedAt: complete ? Date.now() : undefined, completionDates: complete ? [...new Set([...(r.completionDates ?? []), date])] : (r.completionDates ?? []).filter((d) => d !== date) };
@@ -145,7 +150,7 @@ export function reminderStatus(r: Reminder, now = new Date()): 'upcoming' | 'due
 }
 
 export async function removeReminder(rid: string): Promise<void> {
-  if (supabase) { const { error } = await supabase.from('reminders').delete().eq('id', rid); if (error) throw error; return; }
+  if (supabase && !rid.startsWith('guest-reminder-')) { const { error } = await supabase.from('reminders').delete().eq('id', rid); if (error) throw error; return; }
   await storageService.deleteReminder(rid);
 }
 

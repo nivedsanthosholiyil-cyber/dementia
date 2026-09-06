@@ -23,6 +23,7 @@ export function Settings() {
     setAccessibility,
     setRole,
     update,
+    exitGuest,
   } = useSettings();
   const { say, supported, enabled } = useVoice();
   const { showToast } = useToast();
@@ -31,6 +32,7 @@ export function Settings() {
   const [langOpen, setLangOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
   const [contactDraft, setContactDraft] = useState(settings.emergencyContact);
+  const [guestBusy, setGuestBusy] = useState(false);
 
   const a11y = settings.accessibility;
   const overallLevel = getOverallLevel();
@@ -66,6 +68,28 @@ export function Settings() {
   const openCaregiver = () => {
     setRole('caregiver');
     navigate('/caregiver');
+  };
+
+  const leaveGuestMode = async (clearData: boolean) => {
+    setGuestBusy(true);
+    try {
+      await exitGuest(clearData);
+      navigate('/');
+    } finally {
+      setGuestBusy(false);
+    }
+  };
+
+  const upgradeGuestMode = async () => {
+    setGuestBusy(true);
+    try {
+      // Retain the local demo namespace, but leave Guest Mode before entering
+      // the real auth screen so a refresh cannot reopen the guest session.
+      await exitGuest(false);
+      navigate('/auth');
+    } finally {
+      setGuestBusy(false);
+    }
   };
 
   return (
@@ -112,6 +136,18 @@ export function Settings() {
               {t('settings.testVoice')}
             </Button>
           </Card>
+
+          {settings.guestMode && <Card className="guest-settings-card" variant="tint" padLg>
+            <div className="row" style={{ gap: '0.6rem', marginBottom: '0.5rem' }}>
+              <span aria-hidden="true" style={{ fontSize: '1.5rem' }}>🧪</span>
+              <div><h2 className="card-title">Guest Mode</h2><p className="muted">Your demo patient, people, reminders, and activity stay on this device only.</p></div>
+            </div>
+            <div className="stack-sm">
+              <Button variant="primary" block onClick={() => void upgradeGuestMode()} disabled={guestBusy}>Create an account to save your data securely</Button>
+              <Button variant="ghost" block onClick={() => void leaveGuestMode(false)} disabled={guestBusy}>Exit Guest Mode</Button>
+              <Button variant="ghost" block onClick={() => { if (window.confirm('Clear all Guest Mode demo data from this device?')) void leaveGuestMode(true); }} disabled={guestBusy}>Clear guest data and exit</Button>
+            </div>
+          </Card>}
 
           {/* Display & touch */}
           <section>
@@ -306,9 +342,9 @@ export function Settings() {
           </Card>
 
           {/* Open family dashboard */}
-          <Button variant="secondary" icon="users" block size="lg" onClick={openCaregiver}>
+          {!settings.guestMode && <Button variant="secondary" icon="users" block size="lg" onClick={openCaregiver}>
             {t('settings.switchToCaregiver')}
-          </Button>
+          </Button>}
 
 
           <p className="disclaimer">{t('common.disclaimer')}</p>

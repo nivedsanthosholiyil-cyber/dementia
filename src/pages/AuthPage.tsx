@@ -19,7 +19,7 @@ type AuthMode = 'sign-in' | 'sign-up' | 'forgot-password';
 export function AuthPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { settings, setVoiceEnabled, setAccessibility } = useSettings();
+  const { settings, setVoiceEnabled, setAccessibility, enterGuest } = useSettings();
   const [mode, setMode] = useState<AuthMode>('sign-in');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -27,6 +27,7 @@ export function AuthPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [guestLoading, setGuestLoading] = useState(false);
   const [message, setMessage] = useState(() => (location.state as { resetComplete?: boolean } | null)?.resetComplete ? 'Your password was updated. You can sign in with it now.' : '');
   const [error, setError] = useState('');
 
@@ -110,6 +111,19 @@ export function AuthPage() {
     }
   };
 
+  const guestLogin = async () => {
+    setGuestLoading(true);
+    setMessage('');
+    setError('');
+    try {
+      await enterGuest();
+      navigate('/home', { replace: true });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to start Guest Mode.');
+      setGuestLoading(false);
+    }
+  };
+
   const heading = mode === 'sign-up' ? 'Create your account' : mode === 'forgot-password' ? 'Reset your password' : 'Welcome back';
   const submitLabel = mode === 'sign-up' ? 'Create account' : mode === 'forgot-password' ? 'Send reset link' : 'Sign In';
 
@@ -151,6 +165,14 @@ export function AuthPage() {
             </div>
             <Button type="submit" size="lg" block disabled={busy}>{busy ? 'Please wait…' : submitLabel}</Button>
           </form>
+
+          <div className="auth-divider" role="separator"><span>or try MemoryCare</span></div>
+          <div className="stack-sm">
+            <Button type="button" size="lg" block variant="ghost" onClick={() => void guestLogin()} disabled={busy || googleLoading || guestLoading}>
+              {guestLoading ? 'Opening Guest Mode…' : 'Continue as Guest'}
+            </Button>
+            <p className="muted text-center">Try MemoryCare without an account. Your demo data stays on this device.</p>
+          </div>
 
           {error && <p className="banner banner--red" role="alert">{error}</p>}
           {message && <p className="banner banner--green" role="status" aria-live="polite">{message}</p>}

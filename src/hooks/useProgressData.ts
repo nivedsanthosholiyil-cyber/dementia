@@ -5,6 +5,7 @@ import { buildSummary } from '@/services/progressService';
 import { localDateKey } from '@/utils/date';
 import { useSettings } from './useSettings';
 import { supabase } from '@/lib/supabase';
+import { isGuestPatientId } from '@/services/guestService';
 
 function todayKey() {
   return localDateKey();
@@ -20,7 +21,7 @@ export function useProgressData() {
   const reload = useCallback(async () => {
     try {
     let list: GameSession[];
-    if (supabase && settings.activePatientId) {
+    if (supabase && settings.activePatientId && !isGuestPatientId(settings.activePatientId)) {
       const { data, error } = await supabase.from('game_sessions').select('id, patient_id, game_type, level, score, accuracy, attempts, completed, duration_seconds, played_at').eq('patient_id', settings.activePatientId).order('played_at', { ascending: false });
       if (error) throw error;
       list = (data ?? []).map((s) => ({ id: s.id, patientId: s.patient_id, gameType: s.game_type as GameSession['gameType'], level: s.level, score: s.score, accuracy: s.accuracy, attempts: s.attempts, completed: s.completed, durationSec: s.duration_seconds, timestamp: new Date(s.played_at).getTime(), synced: true }));

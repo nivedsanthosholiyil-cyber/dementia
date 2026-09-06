@@ -922,6 +922,18 @@ textarea.input { min-height: 7rem; padding-block: var(--space-sm); resize: verti
   background: var(--secondary-container);
   color: var(--on-secondary-container);
 }
+.guest-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.45rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-full);
+  background: var(--primary-fixed-soft);
+  color: var(--on-primary-fixed);
+  font-size: 0.72em;
+  font-weight: 800;
+  vertical-align: middle;
+}
 @media (max-width: 420px) {
   .auth-card { padding: var(--space-md); }
   .auth-page h1 { font-size: var(--fs-h2); }

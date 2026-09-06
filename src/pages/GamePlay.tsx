@@ -13,6 +13,7 @@ import { PatternRecall } from '@/games/PatternRecall';
 import { DailyRoutine } from '@/games/DailyRoutine';
 import { WhoIsThisPerson } from '@/games/WhoIsThisPerson';
 import { calculateAdaptiveLevel, GAME_DEFINITIONS, recordStandardSession } from '@/services/gameService';
+import { isGuestPatientId } from '@/services/guestService';
 import { supabase } from '@/lib/supabase';
 
 const VALID: GameType[] = ['picture-pairs', 'pattern-recall', 'daily-routine', 'who-is-this-person'];
@@ -50,10 +51,10 @@ export function GamePlay() {
   const handleComplete = async (outcome: GameOutcome) => {
     const previousLevel = getLevel(gameType);
     const patientId = settings.activePatientId ?? 'unassigned';
-    const recentScores = supabase && patientId !== 'unassigned' ? ((await supabase.from('game_sessions').select('score').eq('patient_id', patientId).eq('game_type', gameType).order('played_at', { ascending: false }).limit(3)).data ?? []).map((entry) => entry.score) : [];
+    const recentScores = supabase && patientId !== 'unassigned' && !isGuestPatientId(patientId) ? ((await supabase.from('game_sessions').select('score').eq('patient_id', patientId).eq('game_type', gameType).order('played_at', { ascending: false }).limit(3)).data ?? []).map((entry) => entry.score) : [];
     const { level: newLevel, change } = calculateAdaptiveLevel(outcome.score, outcome.responseTimeMs ?? outcome.durationSec * 1000, recentScores, previousLevel);
     await recordStandardSession({ patientId, gameType, category: GAME_DEFINITIONS[gameType].category, difficulty: previousLevel, score: outcome.score, accuracy: outcome.accuracy, attempts: outcome.attempts, mistakes: outcome.mistakes ?? Math.max(0, outcome.attempts - Math.round((outcome.accuracy / 100) * outcome.attempts)), responseTimeMs: outcome.responseTimeMs ?? outcome.durationSec * 1000, completed: true, metrics: outcome.metrics ?? {} });
-    if (supabase && patientId !== 'unassigned') await supabase.from('adaptive_difficulty_history').insert({ patient_id: patientId, game_type: gameType, previous_level: previousLevel, new_level: newLevel, score: outcome.score, response_time_ms: outcome.responseTimeMs ?? outcome.durationSec * 1000, consistency_score: outcome.score });
+    if (supabase && patientId !== 'unassigned' && !isGuestPatientId(patientId)) await supabase.from('adaptive_difficulty_history').insert({ patient_id: patientId, game_type: gameType, previous_level: previousLevel, new_level: newLevel, score: outcome.score, response_time_ms: outcome.responseTimeMs ?? outcome.durationSec * 1000, consistency_score: outcome.score });
     setLevel(gameType, newLevel);
     setResult({
       gameType,

@@ -1,9 +1,15 @@
 import { supabase } from '@/lib/supabase';
 import type { PersonMemory } from '@/types';
+import { isGuestPatientId } from './guestService';
+import { storageService } from './storageService';
 
 const bucket = 'patient-media';
 
 export async function listPeople(patientId: string): Promise<PersonMemory[]> {
+  if (isGuestPatientId(patientId)) {
+    const people = await storageService.getPersonMemories();
+    return people.filter((person) => person.patient_id === patientId).sort((a, b) => a.name.localeCompare(b.name));
+  }
   if (!supabase) return [];
   const { data, error } = await supabase.from('person_memories').select('id, patient_id, name, relationship, nickname, photo_path, notes, voice_recording_path').eq('patient_id', patientId).order('created_at').limit(50);
   if (error) throw error;
@@ -11,6 +17,20 @@ export async function listPeople(patientId: string): Promise<PersonMemory[]> {
 }
 
 export async function savePerson(person: Partial<PersonMemory> & Pick<PersonMemory, 'patient_id' | 'name'>, photo?: File | null, voice?: File | null) {
+  if (isGuestPatientId(person.patient_id)) {
+    const localPerson: PersonMemory = {
+      id: person.id ?? `guest-person-${crypto.randomUUID()}`,
+      patient_id: person.patient_id,
+      name: person.name.trim(),
+      relationship: person.relationship ?? 'other',
+      nickname: person.nickname ?? null,
+      photo_path: null,
+      notes: person.notes ?? null,
+      voice_recording_path: null,
+    };
+    await storageService.putPersonMemory(localPerson);
+    return localPerson;
+  }
   if (!supabase) throw new Error('Supabase is not configured.');
   const client = supabase;
   const id = person.id ?? crypto.randomUUID();
@@ -36,6 +56,10 @@ export async function savePerson(person: Partial<PersonMemory> & Pick<PersonMemo
 }
 
 export async function removePerson(id: string) {
+  if (id.startsWith('guest-person-')) {
+    await storageService.deletePersonMemory(id);
+    return;
+  }
   if (!supabase) throw new Error('Supabase is not configured.');
   const { error } = await supabase.from('person_memories').delete().eq('id', id);
   if (error) throw error;

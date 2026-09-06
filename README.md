@@ -54,6 +54,19 @@ row with `auth.uid()`; choosing Caregiver loads only active
 `caregiver_patient` links. `My People` remains scoped by the existing
 `private.can_access_patient` helper and RLS policies.
 
+### Guest Mode
+
+Guest Mode is a local-only demonstration session. It uses the stable local
+patient id `guest-demo-patient`, seeds example People/reminders/contact data,
+and routes guest People, reminders, emergency data, game history, and progress
+through IndexedDB/localStorage. Guest Mode never calls Supabase and never sets
+the Supabase session or claims the user is authenticated. Protected caregiver
+routes still require a real Supabase session.
+
+From Settings, a guest can create a real account. Guest data is not copied to
+Supabase automatically. The guest can exit while retaining local demo data or
+clear only the guest namespace from the device.
+
 The Vite build also normalizes public values from the Supabase/Vercel
 integration when it provides `SUPABASE_URL` plus `SUPABASE_ANON_KEY` (or the
 equivalent `NEXT_PUBLIC_*` names). These are build-time aliases only; the

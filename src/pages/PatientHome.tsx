@@ -93,6 +93,8 @@ export function PatientHome() {
 
         <OfflineBanner />
 
+        {settings.guestMode && <div className="banner banner--amber" role="status"><span aria-hidden="true">🧪</span><span><strong>Guest Mode</strong> · This is demo data saved only on this device.</span></div>}
+
         <section className="grid-2">
           <Button size="lg" block icon="play" onClick={() => navigate('/games')}>Play</Button>
           <Button size="lg" block variant="secondary" icon="chart" onClick={() => navigate('/progress')}>Progress</Button>

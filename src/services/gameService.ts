@@ -11,6 +11,7 @@
 import type { CognitiveCategory, GameSession, GameType, LevelMap, StandardGameSession } from '@/types';
 import { storageService } from './storageService';
 import { supabase } from '@/lib/supabase';
+import { isGuestPatientId } from './guestService';
 
 export const MIN_LEVEL = 1;
 export const MAX_LEVEL = 5;
@@ -127,7 +128,7 @@ export async function recordStandardSession(input: Omit<StandardGameSession, 'id
     durationSec: Math.round(input.responseTimeMs / 1000),
   };
   await recordSession(legacy);
-  if (!supabase) return session;
+  if (!supabase || isGuestPatientId(input.patientId)) return session;
   const game = GAME_DEFINITIONS[input.gameType];
   const { data: gameRow, error: gameError } = await supabase.from('games').select('id').eq('slug', game.slug).single();
   if (gameError) throw gameError;
