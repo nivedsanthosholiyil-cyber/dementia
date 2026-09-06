@@ -17,7 +17,7 @@ import { storageService } from '@/services/storageService';
 import { configureVoice } from '@/services/voiceService';
 import { activeProfileFrom, displayName } from '@/utils/profile';
 import { currentAuthContext, onAuthStateChange, signOut } from '@/services/authService';
-import { listAuthorizedPatients } from '@/services/patientService';
+import { ensureCurrentUserPatient, listAuthorizedPatients } from '@/services/patientService';
 import { supabase } from '@/lib/supabase';
 import { inspectSupabase } from '@/lib/supabaseDiagnostics';
 
@@ -81,10 +81,16 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         const context = await currentAuthContext();
         if (!live) return;
         if (!context) { setSettings((s) => ({ ...s, authenticated: false })); return; }
-        const patients = await listAuthorizedPatients();
+        let patients = await listAuthorizedPatients();
+        if (context.role === 'patient' && !context.needsRoleSelection && patients.length === 0) {
+          const patient = await ensureCurrentUserPatient(context.displayName);
+          if (patient) patients = [patient];
+        }
         if (!live) return;
-        const active = patients.find((patient) => patient.id === settings.activePatientId) ?? patients[0];
-        setSettings((s) => ({ ...s, authenticated: true, onboarded: true, needsRoleSelection: context.needsRoleSelection, role: context.role, userName: context.displayName, caregiverName: context.role === 'caregiver' ? context.displayName : s.caregiverName, activePatientId: active?.id ?? s.activePatientId, patientName: active?.name ?? s.patientName, activeProfile: active ? { id: active.id, patientName: active.name, caregiverName: context.role === 'caregiver' ? context.displayName : s.caregiverName, role: context.role } : s.activeProfile }));
+        setSettings((s) => {
+          const active = patients.find((patient) => patient.id === s.activePatientId) ?? patients[0];
+          return { ...s, authenticated: true, onboarded: true, needsRoleSelection: context.needsRoleSelection, role: context.role, userName: context.displayName, caregiverName: context.role === 'caregiver' ? context.displayName : s.caregiverName, activePatientId: active?.id ?? s.activePatientId, patientName: active?.name ?? s.patientName, activeProfile: active ? { id: active.id, patientName: active.name, caregiverName: context.role === 'caregiver' ? context.displayName : s.caregiverName, role: context.role } : s.activeProfile };
+        });
       } catch { if (live) setSettings((s) => ({ ...s, authenticated: false })); }
       finally { if (live) setAuthReady(true); }
     };

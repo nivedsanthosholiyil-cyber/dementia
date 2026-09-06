@@ -30,6 +30,7 @@ import { Emergency } from '@/pages/Emergency';
 import { CaregiverReminders } from '@/pages/caregiver/CaregiverReminders';
 import { CaregiverEmergency } from '@/pages/caregiver/CaregiverEmergency';
 import { ChooseRole } from '@/pages/ChooseRole';
+import { ResetPassword } from '@/pages/ResetPassword';
 
 /** Bridges settings.language into the i18n provider. */
 function I18nBridge({ children }: { children: ReactNode }) {
@@ -81,6 +82,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<LandingRoute />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/language" element={<LanguageSelect />} />
       <Route path="/choose-role" element={<RequireOnboarded><ChooseRole /></RequireOnboarded>} />
 

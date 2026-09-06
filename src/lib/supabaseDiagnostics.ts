@@ -12,8 +12,7 @@ export async function inspectSupabase(): Promise<SupabaseDiagnostics> {
     urlPresent: Boolean(import.meta.env.VITE_SUPABASE_URL),
     publicKeyPresent: Boolean(
       import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-      || import.meta.env.VITE_SUPABASE_ANON_KEY
-      || import.meta.env.VITE_SUPABASE_KEY,
+      || import.meta.env.VITE_SUPABASE_ANON_KEY,
     ),
     clientInitialized: isSupabaseConfigured && Boolean(supabase),
     authenticatedSession: false,

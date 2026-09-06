@@ -22,7 +22,8 @@ npm run dev
 
 The browser client lives in `src/lib/supabase.ts` and uses Supabase's normal
 browser session persistence. It accepts `VITE_SUPABASE_ANON_KEY` (or the newer
-`VITE_SUPABASE_PUBLISHABLE_KEY`).
+`VITE_SUPABASE_PUBLISHABLE_KEY`). A service-role key is never accepted by the
+frontend.
 
 ### Google OAuth configuration
 
@@ -30,6 +31,28 @@ browser session persistence. It accepts `VITE_SUPABASE_ANON_KEY` (or the newer
 2. In Supabase **Authentication > Providers > Google**, enable Google and paste the Google client ID and client secret there.
 3. In Supabase **Authentication > URL Configuration**, add the Vercel production URL already assigned to this project and local development URLs (for example `http://localhost:5173`) as redirect URLs.
 4. In Vercel **Project > Settings > Environment Variables**, set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (or `VITE_SUPABASE_PUBLISHABLE_KEY`) for Production, Preview, and Development, then redeploy. These are public browser keys; never set `service_role` or another secret as a `VITE_` variable.
+
+### Email/password configuration
+
+The app uses `supabase.auth.signUp`, `signInWithPassword`,
+`resetPasswordForEmail`, and `updateUser`; it does not implement a second
+password store. In Supabase **Authentication > Providers**, enable Email and
+keep Google enabled. Choose the desired email-confirmation behavior. If email
+confirmation is enabled, new users see a confirmation message and must return
+to the app to sign in after confirming.
+
+In **Authentication > URL Configuration**, set the Site URL to the deployed
+Vercel production URL and add that URL plus `/reset-password` to Redirect URLs.
+Also add `http://localhost:5173` and
+`http://localhost:5173/reset-password` for local testing. The app builds these
+redirects from `window.location.origin`, so the production host is never
+hard-coded in frontend code.
+
+The first sign-in for either provider uses the existing `profiles` trigger and
+role-selection flow. Choosing Patient creates the RLS-protected `patients`
+row with `auth.uid()`; choosing Caregiver loads only active
+`caregiver_patient` links. `My People` remains scoped by the existing
+`private.can_access_patient` helper and RLS policies.
 
 The Vite build also normalizes public values from the Supabase/Vercel
 integration when it provides `SUPABASE_URL` plus `SUPABASE_ANON_KEY` (or the
@@ -40,11 +63,10 @@ is accepted or mapped.
 Apply `supabase/schema.sql` before using the app. For an existing project,
 apply `supabase/auth_google_migration.sql` afterwards; it preserves existing
 role assignments while enabling first-sign-in role selection for Google users.
-Google accounts create/use
-`auth.users` identities and are authorized solely through the existing
-`profiles`, `patients`, and `caregiver_patient` RLS model. Link caregivers to
-patients through `caregiver_patient`; one caregiver may have multiple active
-links.
+Google and email/password accounts create/use `auth.users` identities and are
+authorized solely through the existing `profiles`, `patients`, and
+`caregiver_patient` RLS model. Link caregivers to patients through
+`caregiver_patient`; one caregiver may have multiple active links.
 
 ## Production build
 
