@@ -124,7 +124,7 @@ export function AuthPage() {
     }
   };
 
-  const heading = mode === 'sign-up' ? 'Create your account' : mode === 'forgot-password' ? 'Reset your password' : 'Welcome back';
+  const heading = mode === 'sign-up' ? 'Create your account' : mode === 'forgot-password' ? 'Reset your password' : 'Sign in on this device.';
   const submitLabel = mode === 'sign-up' ? 'Create account' : mode === 'forgot-password' ? 'Send reset link' : 'Sign In';
 
   return (

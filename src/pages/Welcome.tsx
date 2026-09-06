@@ -15,13 +15,14 @@ import { AuthPage } from '@/pages/AuthPage';
 
 export function Welcome() {
   const { t } = useI18n();
-  const { settings, setVoiceEnabled, setAccessibility, completeOnboarding, updateActiveProfile, update } =
+  const { settings, setVoiceEnabled, setAccessibility, completeOnboarding, updateActiveProfile, update, enterGuest } =
     useSettings();
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
   const [patientName, setPatientName] = useState('');
   const [authMessage, setAuthMessage] = useState('');
+  const [guestLoading, setGuestLoading] = useState(false);
 
   const greeting = t(`welcome.${greetingKey()}`);
   const readText = `${greeting}. ${t('welcome.headline')} ${t('welcome.subtitle')}`;
@@ -50,16 +51,56 @@ export function Welcome() {
   };
   const signInWithPasskey = async () => {
     try { if (await verifyPasskey()) { update({ authenticated: true }); navigate(routeForRole(activeProfileFrom(settings).role)); } }
-    catch (error) { setAuthMessage(error instanceof Error ? `Passkey verification failed: ${error.message}` : 'Passkey verification failed.'); }
+    catch { setAuthMessage('Passkey sign-in was cancelled or timed out. You can try again or use your PIN.'); }
   };
   const setupPasskey = async () => {
     try { const profile = activeProfileFrom(settings); await registerPasskey(profile.id, displayName(profile)); setAuthMessage('Passkey set up successfully.'); }
-    catch (error) { setAuthMessage(error instanceof Error ? `Passkey registration failed: ${error.message}` : 'Passkey registration failed.'); }
+    catch { setAuthMessage('Passkey setup was cancelled or timed out. You can try again or use your PIN.'); }
+  };
+  const startGuestMode = async () => {
+    setGuestLoading(true);
+    setAuthMessage('');
+    try {
+      await enterGuest();
+      navigate('/home', { replace: true });
+    } catch {
+      setGuestLoading(false);
+      setAuthMessage('Unable to start Guest Mode. Your local data was not changed.');
+    }
   };
 
   if (isSupabaseConfigured) return <AuthPage />;
 
-  if (settings.onboarded && !settings.authenticated) return <><AppHeader /><main className="page page--flow"><div className="stack-sm text-center"><h1>Welcome back, {displayName(activeProfileFrom(settings))}</h1><p className="text-muted">Sign in on this device.</p></div><div className="card stack-sm"><label className="field__label" htmlFor="sign-in-pin">PIN</label><input id="sign-in-pin" className="input" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} inputMode="numeric" type="password" /><Button block onClick={signInWithPin}>Use PIN instead</Button>{biometricStatus() === 'supported' ? <><Button variant="secondary" block onClick={signInWithPasskey}>Sign in with Face ID / Passkey</Button><Button variant="ghost" block onClick={setupPasskey}>Set up Face ID / Passkey</Button></> : <p className="muted">Face ID / passkeys are unavailable in this browser or context. Use your PIN instead.</p>}{authMessage && <p role="status" className="muted">{authMessage}</p>}</div></main></>;
+  if (settings.onboarded && !settings.authenticated) {
+    return (
+      <>
+        <AppHeader />
+        <main className="page page--flow auth-page">
+          <div className="stack-sm text-center">
+            <h1>Welcome back, {displayName(activeProfileFrom(settings))}</h1>
+            <p className="text-muted">Sign in on this device.</p>
+          </div>
+          <div className="card stack-sm auth-card">
+            <label className="field__label" htmlFor="sign-in-pin">PIN</label>
+            <input id="sign-in-pin" className="input" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} inputMode="numeric" type="password" />
+            <Button block onClick={signInWithPin}>Use PIN instead</Button>
+            {biometricStatus() === 'supported' ? <>
+              <Button variant="secondary" block onClick={() => void signInWithPasskey()}>Sign in with Face ID / Passkey</Button>
+              <Button variant="ghost" block onClick={() => void setupPasskey()}>Set up Face ID / Passkey</Button>
+            </> : <p className="muted">Face ID / passkeys are unavailable in this browser or context. Use your PIN instead.</p>}
+            {authMessage && <p role="status" className="muted">{authMessage}</p>}
+            <div className="auth-divider" role="separator"><span>or</span></div>
+            <div className="stack-sm">
+              <Button type="button" size="lg" block variant="secondary" onClick={() => void startGuestMode()} disabled={guestLoading}>
+                {guestLoading ? 'Opening Guest Mode…' : 'Continue as Guest'}
+              </Button>
+              <p className="muted text-center">Try MemoryCare without creating an account. Your demo data stays on this device.</p>
+            </div>
+          </div>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>
@@ -119,6 +160,14 @@ export function Welcome() {
           <Button variant="secondary" size="lg" block icon="users" onClick={startCaregiver} disabled={!name.trim() || !patientName.trim() || pin.length < 4}>
             {isSupabaseConfigured ? 'Create caregiver account' : t('welcome.iAmCaregiver')}
           </Button>
+        </div>
+
+        <div className="auth-divider" role="separator"><span>or</span></div>
+        <div className="stack-sm">
+          <Button type="button" size="lg" block variant="secondary" onClick={() => void startGuestMode()} disabled={guestLoading}>
+            {guestLoading ? 'Opening Guest Mode…' : 'Continue as Guest'}
+          </Button>
+          <p className="muted text-center">Try MemoryCare without creating an account. Your demo data stays on this device.</p>
         </div>
 
         {/* Helpful settings */}
