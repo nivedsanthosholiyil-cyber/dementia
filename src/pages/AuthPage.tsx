@@ -31,7 +31,7 @@ export function AuthPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [otp, setOtp] = useState('');
-  const [otpFlow, setOtpFlow] = useState<OtpFlow>('login');
+  const [otpFlow] = useState<OtpFlow>('login');
   const [challengeId, setChallengeId] = useState('');
   const [resendSeconds, setResendSeconds] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -55,15 +55,6 @@ export function AuthPage() {
     const interval = window.setInterval(() => setResendSeconds((seconds) => Math.max(0, seconds - 1)), 1000);
     return () => window.clearInterval(interval);
   }, [resendSeconds]);
-
-  const showOtp = (flow: OtpFlow, nextChallengeId: string) => {
-    setOtpFlow(flow);
-    setChallengeId(nextChallengeId);
-    setMode('otp');
-    setOtp('');
-    setResendSeconds(RESEND_COOLDOWN_SECONDS);
-    setMessage(`We sent a verification code to ${email.trim().toLowerCase()}.`);
-  };
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
