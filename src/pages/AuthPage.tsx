@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
@@ -11,15 +11,11 @@ import {
   PASSWORD_REQUIREMENTS,
   resetPasswordForEmail,
   signInWithGoogle,
-  resendEmailOtp,
   signIn,
   signUp,
-  verifyEmailOtp,
-  type OtpFlow,
 } from '@/services/authService';
 
-type AuthMode = 'sign-in' | 'sign-up' | 'forgot-password' | 'otp';
-const RESEND_COOLDOWN_SECONDS = 60;
+type AuthMode = 'sign-in' | 'sign-up' | 'forgot-password';
 
 export function AuthPage() {
   const location = useLocation();
@@ -30,10 +26,6 @@ export function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [otp, setOtp] = useState('');
-  const [otpFlow] = useState<OtpFlow>('login');
-  const [challengeId, setChallengeId] = useState('');
-  const [resendSeconds, setResendSeconds] = useState(0);
   const [busy, setBusy] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [guestLoading, setGuestLoading] = useState(false);
@@ -46,15 +38,7 @@ export function AuthPage() {
     setError('');
     setPassword('');
     setConfirmPassword('');
-    setOtp('');
-    setChallengeId('');
   };
-
-  useEffect(() => {
-    if (resendSeconds <= 0) return;
-    const interval = window.setInterval(() => setResendSeconds((seconds) => Math.max(0, seconds - 1)), 1000);
-    return () => window.clearInterval(interval);
-  }, [resendSeconds]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -113,42 +97,6 @@ export function AuthPage() {
     }
   };
 
-  const verifyOtp = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setMessage('');
-    setError('');
-    const token = otp.replace(/\s/g, '');
-    if (!/^\d{6}$/.test(token)) {
-      setError('Enter the 6-digit code from your email.');
-      return;
-    }
-    setBusy(true);
-    try {
-      await verifyEmailOtp(otpFlow, email.trim().toLowerCase(), token, challengeId, otpFlow === 'login' ? password : undefined);
-      navigate('/', { replace: true });
-    } catch (reason) {
-      setError(authErrorMessage(reason, 'That code is invalid or has expired. Request a new code and try again.'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const resendOtp = async () => {
-    if (resendSeconds > 0) return;
-    setMessage('');
-    setError('');
-    setBusy(true);
-    try {
-      await resendEmailOtp(otpFlow, email.trim().toLowerCase(), challengeId);
-      setResendSeconds(RESEND_COOLDOWN_SECONDS);
-      setMessage('A new verification code has been sent.');
-    } catch (reason) {
-      setError(authErrorMessage(reason, 'Unable to resend a verification code right now.'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const googleLogin = async () => {
     setGoogleLoading(true);
     setMessage('');
@@ -174,7 +122,7 @@ export function AuthPage() {
     }
   };
 
-  const heading = mode === 'sign-up' ? 'Create your account' : mode === 'forgot-password' ? 'Reset your password' : mode === 'otp' ? 'Enter verification code' : 'Sign in on this device.';
+  const heading = mode === 'sign-up' ? 'Create your account' : mode === 'forgot-password' ? 'Reset your password' : 'Sign in on this device.';
   const submitLabel = mode === 'sign-up' ? 'Create account' : mode === 'forgot-password' ? 'Send reset link' : 'Continue';
 
   return (
@@ -189,7 +137,7 @@ export function AuthPage() {
         </section>
 
         <section className="card auth-card stack-lg" aria-label="Authentication options">
-          {mode !== 'forgot-password' && mode !== 'otp' && <>
+          {mode !== 'forgot-password' && <>
             <div className="stack-sm">
               <h2 className="card-title">Use Google</h2>
               <p className="muted">Continue with your Google account.</p>
@@ -200,15 +148,7 @@ export function AuthPage() {
             <div className="auth-divider" role="separator"><span>or use email</span></div>
           </>}
 
-          {mode === 'otp' ? <form className="stack" onSubmit={(event) => void verifyOtp(event)} noValidate>
-            <div className="stack-sm">
-              <h2 className="card-title">Check your email</h2>
-              <p className="muted">Enter the 6-digit code sent to {email.trim().toLowerCase()}.</p>
-              <div className="field"><label className="field__label" htmlFor="auth-otp">Verification code</label><input id="auth-otp" className="input" value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={6} autoFocus /></div>
-            </div>
-            <Button type="submit" size="lg" block disabled={busy}>{busy ? 'Verifying…' : 'Verify'}</Button>
-            <Button type="button" size="lg" block variant="secondary" onClick={() => void resendOtp()} disabled={busy || resendSeconds > 0}>{resendSeconds > 0 ? `Resend OTP in ${resendSeconds}s` : 'Resend OTP'}</Button>
-          </form> : <form className="stack" onSubmit={(event) => void submit(event)} noValidate>
+          <form className="stack" onSubmit={(event) => void submit(event)} noValidate>
             <div className="stack-sm">
               <h2 className="card-title">{mode === 'sign-up' ? 'Email and password' : 'Email address'}</h2>
               {mode === 'sign-up' && <div className="field"><label className="field__label" htmlFor="auth-name">Your name</label><input id="auth-name" className="input" value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" /></div>}
@@ -222,15 +162,15 @@ export function AuthPage() {
               </>}
             </div>
             <Button type="submit" size="lg" block disabled={busy}>{busy ? 'Please wait…' : submitLabel}</Button>
-          </form>}
+          </form>
 
-          {mode !== 'otp' && <><div className="auth-divider" role="separator"><span>or try MemoryCare</span></div>
+          <><div className="auth-divider" role="separator"><span>or try MemoryCare</span></div>
             <div className="stack-sm">
               <Button type="button" size="lg" block variant="ghost" onClick={() => void guestLogin()} disabled={busy || googleLoading || guestLoading}>
                 {guestLoading ? 'Opening Guest Mode…' : 'Continue as Guest'}
               </Button>
               <p className="muted text-center">Try MemoryCare without an account. Your demo data stays on this device.</p>
-            </div></>}
+            </div></>
 
           {error && <p className="banner banner--red" role="alert">{error}</p>}
           {message && <p className="banner banner--green" role="status" aria-live="polite">{message}</p>}
@@ -238,7 +178,6 @@ export function AuthPage() {
           <div className="auth-links">
             {mode === 'sign-in' && <button type="button" className="auth-link" onClick={() => switchMode('forgot-password')}>Forgot password?</button>}
             {mode === 'forgot-password' && <button type="button" className="auth-link" onClick={() => switchMode('sign-in')}>Back to Sign In</button>}
-            {mode === 'otp' && <button type="button" className="auth-link" onClick={() => switchMode(otpFlow === 'signup' ? 'sign-up' : 'sign-in')}>Use a different email</button>}
             {mode === 'sign-in' && <p className="muted">New to MemoryCare? <button type="button" className="auth-link" onClick={() => switchMode('sign-up')}>Create account</button></p>}
             {mode === 'sign-up' && <p className="muted">Already have an account? <button type="button" className="auth-link" onClick={() => switchMode('sign-in')}>Sign In</button></p>}
           </div>
