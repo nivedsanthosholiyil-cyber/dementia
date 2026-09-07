@@ -30,7 +30,7 @@ export function AuthPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [otp, setOtp] = useState('');
-  const [otpFlow] = useState<OtpFlow>('login');
+  const [otpFlow, setOtpFlow] = useState<OtpFlow>('login');
   const [challengeId, setChallengeId] = useState('');
   const [resendSeconds, setResendSeconds] = useState(0);
   const [busy, setBusy] = useState(false);
