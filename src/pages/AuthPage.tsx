@@ -55,6 +55,15 @@ export function AuthPage() {
     return () => window.clearInterval(interval);
   }, [resendSeconds]);
 
+  const showOtp = (flow: OtpFlow, nextChallengeId: string) => {
+    setOtpFlow(flow);
+    setChallengeId(nextChallengeId);
+    setMode('otp');
+    setOtp('');
+    setResendSeconds(RESEND_COOLDOWN_SECONDS);
+    setMessage(`We sent a verification code to ${email.trim().toLowerCase()}.`);
+  };
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessage('');
