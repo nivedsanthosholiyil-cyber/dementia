@@ -11,9 +11,8 @@ import {
   PASSWORD_REQUIREMENTS,
   resetPasswordForEmail,
   signInWithGoogle,
+  requestEmailOtp,
   resendEmailOtp,
-  signIn,
-  signUp,
   verifyEmailOtp,
   type OtpFlow,
 } from '@/services/authService';
@@ -97,14 +96,11 @@ export function AuthPage() {
     setBusy(true);
     try {
       if (mode === 'sign-up') {
-        const result = await signUp(normalizedEmail, password, name);
-        if (!result.session) {
-          throw new Error('Email confirmation is still enabled in Supabase. Disable Confirm email for password-only hackathon login.');
-        }
-        navigate('/', { replace: true });
+        const nextChallengeId = await requestEmailOtp('signup', normalizedEmail, { password, displayName: name, language: settings.language });
+        showOtp('signup', nextChallengeId);
       } else {
-        await signIn(normalizedEmail, password);
-        navigate('/', { replace: true });
+        const nextChallengeId = await requestEmailOtp('login', normalizedEmail, { password });
+        showOtp('login', nextChallengeId);
       }
     } catch (reason) {
       setError(authErrorMessage(reason, mode === 'sign-up' ? 'Unable to create your account.' : 'Unable to send a verification code.'));
