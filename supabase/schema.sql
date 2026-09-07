@@ -22,7 +22,9 @@ create table public.profiles (
 
 create table public.patients (
   id uuid primary key default gen_random_uuid(),
-  auth_user_id uuid unique references auth.users(id) on delete set null,
+  -- A caregiver may manage multiple patient rows. RLS still limits access to
+  -- the owning auth.uid() or an active caregiver_patient link.
+  auth_user_id uuid references auth.users(id) on delete set null,
   name text not null check (length(trim(name)) > 0),
   profile_photo_path text,
   date_of_birth date,
@@ -118,7 +120,7 @@ create table public.reminders (
   detail text not null default '',
   icon text not null default '🔔',
   time_local time not null,
-  category public.reminder_category not null default 'other',
+  category public.reminder_category not null default 'custom',
   recurring boolean not null default false,
   repeat_days smallint[] not null default '{}',
   enabled boolean not null default true,
@@ -221,11 +223,14 @@ begin
   if selected_role = 'caregiver' then
     insert into public.caregivers (id) values (auth.uid()) on conflict (id) do nothing;
   else
-    insert into public.patients (auth_user_id, name)
-    select auth.uid(), coalesce(nullif(trim(display_name), ''), 'My profile')
-    from public.profiles where id = auth.uid()
-    on conflict (auth_user_id) do update set name = public.patients.name
-    returning id into selected_patient_id;
+    select p.id into selected_patient_id from public.patients p
+    where p.auth_user_id = auth.uid() order by p.created_at limit 1;
+    if selected_patient_id is null then
+      insert into public.patients (auth_user_id, name)
+      select auth.uid(), coalesce(nullif(trim(display_name), ''), 'My profile')
+      from public.profiles where id = auth.uid()
+      returning id into selected_patient_id;
+    end if;
   end if;
   return selected_patient_id;
 end;

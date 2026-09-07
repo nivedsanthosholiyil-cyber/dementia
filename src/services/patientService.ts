@@ -1,9 +1,22 @@
 import { supabase } from '@/lib/supabase';
 import type { PatientRecord } from '@/types';
 
-export async function createPatient(patient: Pick<PatientRecord, 'name'> & Partial<PatientRecord>, userId: string) {
+export type NewPatient = Pick<PatientRecord, 'name'> & Pick<PatientRecord, 'date_of_birth' | 'notes' | 'share_with_caregiver'>;
+
+export async function createPatient(patient: NewPatient) {
   if (!supabase) throw new Error('Supabase is not configured.');
-  const { data, error } = await supabase.from('patients').insert({ ...patient, auth_user_id: userId }).select().single();
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!authData.user) throw new Error('Please sign in before adding a patient.');
+  const name = patient.name.trim();
+  if (!name) throw new Error('Patient name is required.');
+  const { data, error } = await supabase.from('patients').insert({
+    name,
+    date_of_birth: patient.date_of_birth ?? null,
+    notes: patient.notes ?? null,
+    share_with_caregiver: patient.share_with_caregiver ?? false,
+    auth_user_id: authData.user.id,
+  }).select().single();
   if (error) throw error;
   return data as PatientRecord;
 }
@@ -38,8 +51,11 @@ export async function listAuthorizedPatients() {
   return (data ?? []) as PatientRecord[];
 }
 
-export async function setPatientAccess(caregiverId: string, patientId: string, status: 'pending' | 'active' | 'revoked') {
+export async function setPatientAccess(patientId: string, status: 'pending' | 'active' | 'revoked') {
   if (!supabase) throw new Error('Supabase is not configured.');
-  const { error } = await supabase.from('caregiver_patient').upsert({ caregiver_id: caregiverId, patient_id: patientId, status, granted_by: caregiverId });
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!authData.user) throw new Error('Please sign in before changing patient access.');
+  const { error } = await supabase.from('caregiver_patient').upsert({ caregiver_id: authData.user.id, patient_id: patientId, status, granted_by: authData.user.id });
   if (error) throw error;
 }

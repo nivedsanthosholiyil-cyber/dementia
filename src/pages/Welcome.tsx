@@ -106,32 +106,10 @@ export function Welcome() {
     <>
       <AppHeader readText={readText} />
       <main className="page page--flow">
-        {/* Hero */}
-        <div
-          className="card"
-          style={{
-            background:
-              'linear-gradient(135deg, var(--secondary-container) 0%, var(--primary-fixed) 130%)',
-            border: 'none',
-            padding: 'var(--space-lg)',
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-        >
-          <div className="stack text-center" style={{ position: 'relative', zIndex: 1 }}>
-            <div
-              aria-hidden="true"
-              style={{
-                fontSize: '4.5rem',
-                lineHeight: 1,
-                filter: 'drop-shadow(0 6px 12px rgba(20,30,24,0.15))',
-              }}
-            >
-              🧠
-            </div>
-            <span className="chip chip--soft" style={{ alignSelf: 'center', background: 'rgba(255,255,255,0.7)' }}>
-              <Icon name="leaf" size={18} /> {t('welcome.pacedForYou')}
-            </span>
+        <div className="welcome-hero card">
+          <img src="/stitch-memorycare-portrait.png" alt="A smiling older woman in a warm home" />
+          <div className="welcome-hero__caption">
+            <Icon name="leaf" size={18} /> {t('welcome.pacedForYou')}
           </div>
         </div>
 

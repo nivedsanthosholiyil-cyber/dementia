@@ -1,6 +1,4 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Mood } from '@/types';
 import { useI18n } from '@/i18n';
 import { useSettings } from '@/hooks/useSettings';
 import { useReminders } from '@/hooks/useReminders';
@@ -9,12 +7,9 @@ import { greetingKey } from '@/utils/helpers';
 import { formatTime } from '@/services/reminderService';
 import { AppHeader } from '@/components/AppHeader';
 import { OfflineBanner } from '@/components/OfflineBanner';
-import { Button } from '@/components/Button';
 import { VoiceButton } from '@/components/VoiceButton';
 import { Icon } from '@/components/Icon';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import { storageService } from '@/services/storageService';
-import { localDateKey } from '@/utils/date';
 
 const DAILY_GAME_GOAL = 3;
 
@@ -23,203 +18,137 @@ export function PatientHome() {
   const { settings } = useSettings();
   const navigate = useNavigate();
   const online = useOnlineStatus();
-  const { reminders, completedCount, toggle } = useReminders();
-  const { summary, todayGames } = useProgressData();
-  const [moodNote, setMoodNote] = useState('');
-  const [savedMood, setSavedMood] = useState<Mood | null>(null);
-  const saveMood = async (mood: Mood) => {
-    if (!settings.activePatientId) return;
-    await storageService.putMood({ id: `m_${Date.now()}`, patientId: settings.activePatientId, mood, note: moodNote.trim() || undefined, date: localDateKey(), createdAt: Date.now() });
-    setSavedMood(mood);
-  };
-
+  const {
+    reminders,
+    completedCount,
+    toggle,
+    loading: remindersLoading,
+    error: remindersError,
+  } = useReminders();
+  const { todayGames } = useProgressData();
   const greeting = t(`welcome.${greetingKey()}`);
-  const total = reminders.length;
-  const level = summary?.currentLevel ?? 1;
-
-  const activity = Math.min(
-    100,
-    Math.round(
-      ((total ? completedCount / total : 0) * 0.6 +
-        Math.min(todayGames / DAILY_GAME_GOAL, 1) * 0.4) *
-        100,
-    ),
-  );
-
   const routineItems = reminders.slice(0, 4);
-  const weekdayName = new Date().toLocaleDateString([], { weekday: 'long' });
-
+  const nextReminder = routineItems.find((reminder) => !reminder.completed);
+  const today = new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+  const activityPercent = Math.min(100, Math.round(((reminders.length ? completedCount / reminders.length : 0) * 0.65 + Math.min(todayGames / DAILY_GAME_GOAL, 1) * 0.35) * 100));
   const planText = `${greeting}, ${settings.patientName}. ${t('home.oneStep')} ${routineItems
-    .map((r) => `${r.title} ${formatTime(r.time)}`)
+    .map((reminder) => `${reminder.title} ${formatTime(reminder.time)}`)
     .join('. ')}`;
-  const readScreen = `${greeting}, ${settings.patientName}. ${t('home.oneStep')}`;
 
   return (
     <>
-      <AppHeader subtitle={t('nav.home')} readText={readScreen} />
-      <main className="page">
-        {/* Greeting */}
-        <div
-          className="card"
-          style={{
-            background: 'var(--surface-container)',
-            border: 'none',
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-        >
-          <div className="row-between" style={{ marginBottom: '0.5rem' }}>
-            <span className="chip chip--green">
-              <span className="chip__dot" /> {weekdayName}
-            </span>
-            <span
-              className="row text-muted"
-              style={{ gap: '0.3rem', fontSize: 'var(--fs-caption)', fontWeight: 700 }}
-            >
-              <Icon name={online ? 'wifi' : 'wifi-off'} size={18} />
-              {t('offline.worksOffline')}
+      <AppHeader subtitle={t('nav.home')} readText={planText} />
+      <main className="page patient-home">
+        <section className="home-intro" aria-labelledby="patient-home-title">
+          <div className="home-intro__meta">
+            <span className="home-intro__eyebrow">{today}</span>
+            <span className="row" aria-label={online ? t('offline.worksOffline') : t('offline.youreOffline')}>
+              <Icon name={online ? 'wifi' : 'wifi-off'} size={16} />
+              {online ? t('offline.worksOffline') : t('offline.youreOffline')}
             </span>
           </div>
-          <h1>
-            {greeting}, {settings.patientName} 👋
-          </h1>
-          <p className="text-muted" style={{ fontSize: 'var(--fs-body-lg)', marginTop: '0.25rem' }}>
-            {t('home.oneStep')}
-          </p>
-          <div style={{ marginTop: '0.75rem' }}>
-            <VoiceButton text={planText} label={t('home.hearPlan')} />
-          </div>
-        </div>
+          <h1 id="patient-home-title">{greeting}, {settings.patientName}</h1>
+          <p>Let&apos;s take today one gentle step at a time.</p>
+          <VoiceButton text={planText} label={t('home.hearPlan')} />
+        </section>
 
         <OfflineBanner />
 
-        {settings.guestMode && <div className="banner banner--amber" role="status"><span aria-hidden="true">🧪</span><span><strong>Guest Mode</strong> — your changes are saved only on this device.</span></div>}
-
-        <section className="grid-2">
-          <Button size="lg" block icon="play" onClick={() => navigate('/games')}>Play</Button>
-          <Button size="lg" block variant="secondary" icon="chart" onClick={() => navigate('/progress')}>Progress</Button>
-          <Button size="lg" block variant="secondary" icon="users" onClick={() => navigate('/people')}>My People</Button>
-          <Button size="lg" block variant="ghost" icon="alert" onClick={() => navigate('/emergency')}>Emergency</Button>
-        </section>
-
-        <section className="card stack-sm">
-          <h2>How are you feeling today?</h2>
-          <div className="row" style={{ flexWrap: 'wrap', gap: '0.4rem' }}>
-            {(['happy', 'calm', 'neutral', 'sad', 'worried'] as Mood[]).map((mood) => <button className={`btn ${savedMood === mood ? 'btn--secondary' : 'btn--ghost'}`} type="button" key={mood} onClick={() => saveMood(mood)}>{mood}</button>)}
+        {settings.guestMode && (
+          <div className="state-banner state-banner--success" role="status">
+            <strong>Guest Mode</strong>
+            <span>Your changes are saved only on this device.</span>
           </div>
-          <input className="input" aria-label="Optional mood note" value={moodNote} onChange={(e) => setMoodNote(e.target.value)} placeholder="Optional note" />
-        </section>
+        )}
 
-        {/* Start today's game */}
-        <button
-          type="button"
-          className="card card--interactive"
-          style={{
-            background: 'var(--secondary)',
-            color: 'var(--on-secondary)',
-            border: 'none',
-            boxShadow: 'var(--shadow-md)',
-          }}
-          onClick={() => navigate('/games/picture-pairs')}
-        >
-          <div className="row" style={{ gap: 'var(--space-md)' }}>
-            <span
-              className="medallion"
-              aria-hidden="true"
-              style={{ background: 'var(--primary-container)', color: '#3a2500' }}
+        <section className="next-step" aria-labelledby="next-step-title">
+          <div className="next-step__content">
+            <div className="next-step__kicker"><span className="next-step__dot" /> Your next step</div>
+            <h2 id="next-step-title">{nextReminder?.title ?? t('home.startGame')}</h2>
+            <p>
+              {nextReminder
+                ? `${formatTime(nextReminder.time)} · ${nextReminder.detail}`
+                : t('home.startGameSub')}
+            </p>
+            <button
+              type="button"
+              className="btn"
+              onClick={() =>
+                nextReminder
+                  ? void toggle(nextReminder)
+                  : navigate('/games/picture-pairs')
+              }
             >
-              <Icon name="play" size={30} />
-            </span>
-            <div className="grow">
-              <h2 style={{ color: 'var(--on-secondary)' }}>{t('home.startGame')}</h2>
-              <p style={{ color: 'var(--secondary-fixed)', fontSize: 'var(--fs-body)' }}>
-                {t('home.startGameSub')} • {t('games.picturePairs')}
-              </p>
+              <Icon name={nextReminder ? 'check' : 'play'} size={20} />
+              <span>{nextReminder ? t('home.complete') : t('games.play')}</span>
+            </button>
+          </div>
+        </section>
+
+        <section className="mobile-section" aria-labelledby="today-title">
+          <div className="mobile-section__heading">
+            <h2 id="today-title">{t('home.todaysRoutine')}</h2>
+            <p>{completedCount} / {reminders.length} {t('home.ofDone')}</p>
+          </div>
+          <div className="day-progress" aria-label={`${activityPercent}% of today's plan complete`}>
+            <div className="day-progress__track">
+              <div className="day-progress__fill" style={{ width: `${activityPercent}%` }} />
             </div>
-            <Icon name="arrow-right" size={26} />
-          </div>
-        </button>
-
-        {/* Today's routine */}
-        <section className="stack-sm">
-          <div className="row-between">
-            <h2>{t('home.todaysRoutine')}</h2>
-            <span className="chip chip--soft">
-              {completedCount} / {total} {t('home.ofDone')}
-            </span>
+            <p className="text-muted">{activityPercent}% of today&apos;s plan</p>
           </div>
 
-          {routineItems.map((r) => (
-            <div key={r.id} className="card stack-sm" style={{ padding: 'var(--space-sm) var(--space-md)' }}>
-              <div className="row">
-                <span
-                  className={`medallion ${r.completed ? 'medallion--green' : 'medallion--soft'}`}
-                  aria-hidden="true"
-                >
-                  {r.icon}
-                </span>
-                <div className="grow">
-                  <div className={`setting-row__title ${r.completed ? 'strike' : ''}`}>
-                    {r.title}
+          {remindersLoading && (
+            <div className="empty-state" role="status">
+              <strong>Loading your plan</strong>
+              <span className="text-muted">Your reminders will appear here.</span>
+            </div>
+          )}
+          {remindersError && (
+            <div className="state-banner state-banner--error" role="alert">
+              <strong>We couldn&apos;t load your reminders.</strong>
+              <span>{remindersError}</span>
+            </div>
+          )}
+          {!remindersLoading && !remindersError && routineItems.length === 0 && (
+            <div className="empty-state">
+              <strong>{t('reminders.emptyTitle')}</strong>
+              <span className="text-muted">{t('reminders.emptyBody')}</span>
+            </div>
+          )}
+          {!remindersLoading && !remindersError && routineItems.length > 0 && (
+            <div className="mobile-list">
+              {routineItems.map((reminder) => (
+                <div key={reminder.id} className={`mobile-row ${reminder.completed ? 'is-complete' : ''}`}>
+                  <span className="mobile-row__icon" aria-hidden="true">
+                    <Icon name={reminder.completed ? 'check' : 'clock'} size={22} />
+                  </span>
+                  <div className="mobile-row__body">
+                    <div className="mobile-row__title">{reminder.title}</div>
+                    <div className="mobile-row__meta">
+                      {formatTime(reminder.time)} · {reminder.detail}
+                    </div>
                   </div>
-                  <div className="setting-row__desc">
-                    {formatTime(r.time)} • {r.detail}
-                  </div>
+                  <button
+                    type="button"
+                    className={`btn mobile-row__action ${reminder.completed ? 'btn--secondary' : 'btn--ghost'}`}
+                    onClick={() => void toggle(reminder)}
+                    aria-label={`${reminder.completed ? t('reminders.completed') : t('home.tapToCheck')}: ${reminder.title}`}
+                  >
+                    <Icon name="check" size={19} />
+                    <span>{reminder.completed ? t('common.done') : t('home.complete')}</span>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className={`btn ${r.completed ? 'btn--secondary' : 'btn--warn'}`}
-                  style={{ minHeight: '3rem', padding: '0 1rem' }}
-                  onClick={() => toggle(r)}
-                  aria-label={`${r.completed ? t('reminders.completed') : t('home.tapToCheck')}: ${r.title}`}
-                >
-                  <Icon name="check" size={20} />
-                  <span>{r.completed ? t('common.done') : t('home.complete')}</span>
-                </button>
-              </div>
+              ))}
             </div>
-          ))}
-          <Button variant="ghost" block icon="bell" onClick={() => navigate('/reminders')}>
-            {t('reminders.title')}
-          </Button>
+          )}
+          <button type="button" className="btn btn--ghost btn--block" onClick={() => navigate('/reminders')}>
+            <Icon name="bell" size={20} />
+            <span>{t('reminders.title')}</span>
+          </button>
         </section>
-
-        {/* Your day at a glance */}
-        <section className="card card--tint stack" style={{ background: 'var(--surface-container)' }}>
-          <h2>{t('home.yourDay')}</h2>
-          <div className="row" style={{ gap: 'var(--space-lg)', justifyContent: 'center' }}>
-            <div
-              className="ring"
-              style={{ ['--p' as string]: activity }}
-              role="img"
-              aria-label={`${activity}% ${t('home.yourDay')}`}
-            >
-              <div className="text-center">
-                <div className="ring__value">{activity}%</div>
-                <div className="ring__label">{t('common.done')}</div>
-              </div>
-            </div>
-          </div>
-          <div className="grid-2">
-            <div className="stat">
-              <div className="stat__value">
-                {todayGames} / {DAILY_GAME_GOAL}
-              </div>
-              <div className="stat__label">{t('home.gamesCompleted')}</div>
-            </div>
-            <div className="stat">
-              <div className="stat__value">
-                {t('home.level')} {level}
-              </div>
-              <div className="stat__label">{t('home.currentStage')}</div>
-            </div>
-          </div>
-          <div className="banner banner--amber">
-            <Icon name="star" size={22} />
-            <span>
-              ⭐ {settings.patientName}, {t('home.encourage')}
-            </span>
-          </div>
+        <section className="home-reassurance" aria-label="Today at a glance">
+          <div className="home-reassurance__icon"><Icon name="heart" size={22} /></div>
+          <div><strong>You&apos;re doing well.</strong><p>{activityPercent}% of today&apos;s plan is complete. There is no rush.</p></div>
         </section>
       </main>
     </>

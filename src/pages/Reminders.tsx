@@ -14,6 +14,7 @@ import { formatTime, reminderStatus } from '@/services/reminderService';
 import { localDateKey } from '@/utils/date';
 import { ListSkeleton } from '@/components/Skeleton';
 import { ContentState } from '@/components/ContentState';
+import { ConfirmSheet } from '@/components/ConfirmSheet';
 
 const ICON_CHOICES = ['💊', '💧', '🍎', '📞', '🚶', '🧘', '☀️', '🌙', '📖', '🪥'];
 
@@ -32,6 +33,7 @@ export function Reminders() {
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<Reminder | null>(null);
+  const [deleting, setDeleting] = useState<Reminder | null>(null);
 
   const todaysReminders = reminders.filter((reminder) => reminder.recurring || !reminder.scheduledDate || reminder.scheduledDate === localDateKey());
   const total = todaysReminders.length;
@@ -52,10 +54,7 @@ export function Reminders() {
   };
 
   const handleDelete = (r: Reminder) => {
-    if (window.confirm(`${t('reminders.deleteConfirm')}`)) {
-      remove(r.id);
-      showToast(t('common.done'), '🗑️');
-    }
+    setDeleting(r);
   };
   const requestNotifications = async () => {
     if (!('Notification' in window)) return showToast('Notifications are not supported in this browser.', 'ℹ️');
@@ -106,7 +105,7 @@ export function Reminders() {
             <p className="text-muted">{t('reminders.emptyBody')}</p>
           </div>
         ) : (
-          <div className="stack-sm">
+          <div className="reminder-timeline">
             {todaysReminders.map((r) => (
               <ReminderCard
                 key={r.id}
@@ -143,6 +142,21 @@ export function Reminders() {
             showToast(t('common.add'), '✓');
           }
           setSheetOpen(false);
+        }}
+      />
+      <ConfirmSheet
+        open={Boolean(deleting)}
+        title="Delete reminder"
+        message={t('reminders.deleteConfirm')}
+        confirmLabel="Delete"
+        danger
+        onClose={() => setDeleting(null)}
+        onConfirm={() => {
+          if (deleting) {
+            remove(deleting.id);
+            showToast(t('common.done'), '✓');
+          }
+          setDeleting(null);
         }}
       />
     </>

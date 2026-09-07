@@ -17,7 +17,7 @@ export function Games() {
     <>
       <AppHeader subtitle={t('nav.games')} readText={readScreen} />
       <main className="page">
-        <div className="stack-sm">
+        <div className="screen-intro">
           <h1>{t('games.title')}</h1>
           <p className="text-muted" style={{ fontSize: 'var(--fs-body-lg)' }}>
             {t('games.subtitle')}
@@ -33,18 +33,18 @@ export function Games() {
           label={t('games.listenInstructions')}
         />
 
-        <div className="banner banner--green">
-          <span className="medallion medallion--green" aria-hidden="true">
-            <Icon name="leaf" size={24} />
-          </span>
-          <div>
-            <strong>{t('games.warmUpTitle')}</strong>
-            <div style={{ fontSize: 'var(--fs-caption)' }}>{t('games.warmUpBody')}</div>
+        <div className="activity-feature">
+          <div className="activity-feature__art"><Icon name="sparkle" size={30} /></div>
+          <div className="activity-feature__body">
+            <span className="activity-card__eyebrow">Recommended for this morning · 3 minutes</span>
+            <h2>Memory Match</h2>
+            <p>Take your time finding two pictures that belong together.</p>
           </div>
         </div>
 
+        <div className="section-heading"><h2>Choose something familiar</h2><span>Take your time</span></div>
+
         <GameCard
-          emoji="🧠"
           title={t('games.picturePairs')}
           description={t('games.picturePairsDesc')}
           toneKey="easy"
@@ -52,9 +52,8 @@ export function Games() {
           onPlay={() => navigate('/games/picture-pairs')}
           onHear={() => say(`${t('games.picturePairs')}. ${t('games.picturePairsDesc')}`)}
         />
-        <GameCard emoji="👤" title="Who Is This Person?" description="Recognize familiar people and faces." toneKey="calm" minutes="2–4" onPlay={() => navigate('/games/who-is-this-person')} onHear={() => say('Who Is This Person? Recognize familiar people and faces.')} />
+        <GameCard title="Familiar Faces" description="Recognize people who matter to you, one face at a time." toneKey="calm" minutes="2–4" onPlay={() => navigate('/games/who-is-this-person')} onHear={() => say('Familiar Faces. Recognize people who matter to you, one face at a time.')} />
         <GameCard
-          emoji="🔢"
           title={t('games.patternRecall')}
           description={t('games.patternRecallDesc')}
           toneKey="calm"
@@ -63,7 +62,6 @@ export function Games() {
           onHear={() => say(`${t('games.patternRecall')}. ${t('games.patternRecallDesc')}`)}
         />
         <GameCard
-          emoji="🌤️"
           title={t('games.dailyRoutine')}
           description={t('games.dailyRoutineDesc')}
           toneKey="relaxing"
@@ -72,7 +70,7 @@ export function Games() {
           onHear={() => say(`${t('games.dailyRoutine')}. ${t('games.dailyRoutineDesc')}`)}
         />
 
-        <div className="banner banner--soft">
+        <div className="activity-note">
           <span className="medallion medallion--amber" aria-hidden="true">
             <Icon name="heart" size={24} />
           </span>

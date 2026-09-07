@@ -55,7 +55,7 @@ interface SettingsContextValue {
   update: (patch: Partial<AppSettings>) => void;
   updateActiveProfile: (patch: Partial<ActiveProfile>) => void;
   completeOnboarding: () => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   enterGuest: () => Promise<void>;
   exitGuest: (clearData: boolean) => Promise<void>;
   authReady: boolean;
@@ -151,7 +151,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         };
       }),
       completeOnboarding: () => setSettings((s) => ({ ...s, onboarded: true, authenticated: true })),
-      logout: () => { void signOut(); setSettings((s) => ({ ...s, authenticated: false, guestMode: false })); },
+      logout: async () => {
+        await signOut();
+        setSettings((s) => ({ ...s, authenticated: false, guestMode: false }));
+      },
       enterGuest: async () => {
         await startGuestMode();
         setSettings((s) => ({ ...s, authenticated: false, guestMode: true, onboarded: true, role: 'patient', needsRoleSelection: false, userName: 'Guest', patientName: 'Alex Morgan (Demo)', activePatientId: 'guest-demo-patient', activeProfile: { id: 'guest-demo-patient', patientName: 'Alex Morgan (Demo)', caregiverName: '', role: 'patient' } }));

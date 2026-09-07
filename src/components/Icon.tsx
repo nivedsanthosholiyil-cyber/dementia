@@ -41,7 +41,9 @@ export type IconName =
   | 'sun'
   | 'leaf'
   | 'download'
-  | 'alert';
+  | 'alert'
+  | 'eye'
+  | 'eye-off';
 
 const PATHS: Record<IconName, JSX.Element> = {
   home: (
@@ -247,6 +249,19 @@ const PATHS: Record<IconName, JSX.Element> = {
     <>
       <path d="M12 4 2.5 20h19L12 4Z" />
       <path d="M12 10v4M12 17h.01" />
+    </>
+  ),
+  eye: (
+    <>
+      <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+      <circle cx="12" cy="12" r="2.5" />
+    </>
+  ),
+  'eye-off': (
+    <>
+      <path d="m3 3 18 18" />
+      <path d="M10.6 6.2A10.9 10.9 0 0 1 12 6c6 0 9.5 6 9.5 6a17.5 17.5 0 0 1-3.1 3.8" />
+      <path d="M6.1 6.9C3.8 8.4 2.5 12 2.5 12s3.5 6 9.5 6c1.2 0 2.3-.2 3.2-.6" />
     </>
   ),
 };

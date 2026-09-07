@@ -12,6 +12,8 @@ import { Button } from '@/components/Button';
 import { Toggle } from '@/components/Toggle';
 import { Sheet } from '@/components/Sheet';
 import { Icon } from '@/components/Icon';
+import { authErrorMessage } from '@/services/authService';
+import { ConfirmSheet } from '@/components/ConfirmSheet';
 import type { LanguageCode, ThemePreference } from '@/types';
 
 export function Settings() {
@@ -23,6 +25,7 @@ export function Settings() {
     setAccessibility,
     setRole,
     update,
+    logout,
     exitGuest,
   } = useSettings();
   const { say, supported, enabled } = useVoice();
@@ -33,6 +36,9 @@ export function Settings() {
   const [contactOpen, setContactOpen] = useState(false);
   const [contactDraft, setContactDraft] = useState(settings.emergencyContact);
   const [guestBusy, setGuestBusy] = useState(false);
+  const [logoutBusy, setLogoutBusy] = useState(false);
+  const [accountError, setAccountError] = useState('');
+  const [clearGuestOpen, setClearGuestOpen] = useState(false);
 
   const a11y = settings.accessibility;
   const overallLevel = getOverallLevel();
@@ -92,6 +98,19 @@ export function Settings() {
     }
   };
 
+  const signOutAccount = async () => {
+    setLogoutBusy(true);
+    setAccountError('');
+    try {
+      await logout();
+      navigate('/', { replace: true });
+    } catch (reason) {
+      setAccountError(authErrorMessage(reason, 'Unable to sign out. Please try again.'));
+    } finally {
+      setLogoutBusy(false);
+    }
+  };
+
   return (
     <>
       <AppHeader subtitle={t('nav.settings')} readText={readScreen} />
@@ -105,8 +124,8 @@ export function Settings() {
           {/* Spoken help */}
           <Card variant="tint" padLg>
             <div className="row" style={{ gap: '0.75rem', marginBottom: '0.5rem' }}>
-              <span aria-hidden="true" style={{ fontSize: '1.6rem' }}>
-                🔊
+              <span className="mobile-row__icon" aria-hidden="true">
+                <Icon name="volume" size={24} />
               </span>
               <div>
                 <h2 className="card-title">{t('settings.spokenHelpTitle')}</h2>
@@ -139,15 +158,28 @@ export function Settings() {
 
           {settings.guestMode && <Card className="guest-settings-card" variant="tint" padLg>
             <div className="row" style={{ gap: '0.6rem', marginBottom: '0.5rem' }}>
-              <span aria-hidden="true" style={{ fontSize: '1.5rem' }}>🧪</span>
+              <span className="mobile-row__icon" aria-hidden="true"><Icon name="leaf" size={24} /></span>
               <div><h2 className="card-title">Guest Mode</h2><p className="muted">Your demo patient, people, reminders, and activity stay on this device only.</p></div>
             </div>
             <div className="stack-sm">
               <Button variant="primary" block onClick={() => void upgradeGuestMode()} disabled={guestBusy}>Create an account to save your data securely</Button>
               <Button variant="ghost" block onClick={() => void leaveGuestMode(false)} disabled={guestBusy}>Exit Guest Mode</Button>
-              <Button variant="ghost" block onClick={() => { if (window.confirm('Clear all Guest Mode demo data from this device?')) void leaveGuestMode(true); }} disabled={guestBusy}>Clear guest data and exit</Button>
+              <Button variant="ghost" block onClick={() => setClearGuestOpen(true)} disabled={guestBusy}>Clear guest data and exit</Button>
             </div>
           </Card>}
+
+          <section aria-labelledby="your-space-title">
+            <div className="row-between" style={{ marginBottom: '0.5rem' }}>
+              <h2 id="your-space-title" className="section-title">Your space</h2>
+            </div>
+            <button type="button" className="link-row" onClick={() => navigate('/progress')}>
+              <div className="row" style={{ gap: '0.7rem' }}>
+                <span className="mobile-row__icon" aria-hidden="true"><Icon name="heart" size={22} /></span>
+                <div><strong>Your progress</strong><div className="muted">A gentle look back at your week</div></div>
+              </div>
+              <Icon name="chevron-right" size={22} />
+            </button>
+          </section>
 
           {/* Display & touch */}
           <section>
@@ -346,6 +378,14 @@ export function Settings() {
             {t('settings.switchToCaregiver')}
           </Button>}
 
+          {!settings.guestMode && settings.authenticated && <Card variant="tint" padLg>
+            <div className="stack-sm">
+              <div><strong>Account</strong><p className="muted">Sign out of this MemoryCare account on this device.</p></div>
+              <Button variant="ghost" block onClick={() => void signOutAccount()} disabled={logoutBusy}>{logoutBusy ? 'Signing out…' : 'Sign out'}</Button>
+              {accountError && <p className="banner banner--red" role="alert">{accountError}</p>}
+            </div>
+          </Card>}
+
 
           <p className="disclaimer">{t('common.disclaimer')}</p>
           <p className="muted">Privacy: this is a local hackathon demo. Information remains in this browser unless a real backend is configured.</p>
@@ -398,6 +438,16 @@ export function Settings() {
           </Button>
         </div>
       </Sheet>
+
+      <ConfirmSheet
+        open={clearGuestOpen}
+        title="Clear Guest Mode data"
+        message="This removes the demo patient, people, reminders, and activity saved on this device."
+        confirmLabel="Clear data"
+        danger
+        onClose={() => setClearGuestOpen(false)}
+        onConfirm={() => { setClearGuestOpen(false); void leaveGuestMode(true); }}
+      />
 
     </>
   );

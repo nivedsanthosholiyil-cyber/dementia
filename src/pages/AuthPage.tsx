@@ -2,6 +2,7 @@ import { FormEvent, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
+import { PasswordField } from '@/components/PasswordField';
 import { useSettings } from '@/hooks/useSettings';
 import {
   authErrorMessage,
@@ -156,9 +157,9 @@ export function AuthPage() {
               {mode === 'sign-up' && <div className="field"><label className="field__label" htmlFor="auth-name">Your name</label><input id="auth-name" className="input" value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" /></div>}
               <div className="field"><label className="field__label" htmlFor="auth-email">Email address</label><input id="auth-email" className="input" value={email} onChange={(event) => setEmail(event.target.value)} type="email" inputMode="email" autoComplete="email" autoFocus /></div>
               {mode !== 'forgot-password' && <>
-                <div className="field"><label className="field__label" htmlFor="auth-password">Password</label><input id="auth-password" className="input" value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'} /></div>
+                <PasswordField id="auth-password" label="Password" value={password} onChange={setPassword} autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'} />
                 {mode === 'sign-up' && <>
-                  <div className="field"><label className="field__label" htmlFor="auth-confirm-password">Confirm password</label><input id="auth-confirm-password" className="input" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} type="password" autoComplete="new-password" /></div>
+                  <PasswordField id="auth-confirm-password" label="Confirm password" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" />
                   <p className="muted">{PASSWORD_REQUIREMENTS}</p>
                 </>}
               </>}

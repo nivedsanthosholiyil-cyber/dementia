@@ -3,7 +3,6 @@ import { Button } from './Button';
 import { Icon } from './Icon';
 
 interface GameCardProps {
-  emoji: string;
   title: string;
   description: string;
   toneKey: 'easy' | 'calm' | 'relaxing';
@@ -18,8 +17,13 @@ const toneToVariant: Record<GameCardProps['toneKey'], string> = {
   relaxing: 'medallion--soft',
 };
 
+const toneToIcon = {
+  easy: 'leaf',
+  calm: 'heart',
+  relaxing: 'sparkle',
+} as const;
+
 export function GameCard({
-  emoji,
   title,
   description,
   toneKey,
@@ -29,28 +33,20 @@ export function GameCard({
 }: GameCardProps) {
   const { t } = useI18n();
   return (
-    <div className="card stack-sm">
-      <div className="row" style={{ alignItems: 'flex-start' }}>
-        <span className={`medallion ${toneToVariant[toneKey]}`} aria-hidden="true">
-          {emoji}
+    <article className={`activity-card activity-card--${toneKey}`}>
+      <div className="activity-card__top">
+        <span className={`activity-card__art ${toneToVariant[toneKey]}`} aria-hidden="true">
+          <Icon name={toneToIcon[toneKey]} size={25} />
         </span>
-        <div className="grow">
+        <div className="activity-card__body">
+          <div className="activity-card__eyebrow">{t(`games.${toneKey}`)} · {minutes} {t('games.mins')}</div>
           <h3>{title}</h3>
-          <div
-            className="row"
-            style={{ gap: '0.4rem', color: 'var(--on-secondary-container)', marginTop: '0.15rem' }}
-          >
-            <span className="chip chip--green">{t(`games.${toneKey}`)}</span>
-            <span className="text-muted" style={{ fontSize: 'var(--fs-caption)' }}>
-              {minutes} {t('games.mins')}
-            </span>
-          </div>
+          <p>{description}</p>
         </div>
         {onHear && (
           <button
             type="button"
-            className="medallion medallion--soft"
-            style={{ width: '2.75rem', height: '2.75rem', fontSize: '1rem' }}
+            className="activity-card__listen"
             aria-label={t('common.readAloud')}
             onClick={onHear}
           >
@@ -58,10 +54,9 @@ export function GameCard({
           </button>
         )}
       </div>
-      <p className="text-muted">{description}</p>
-      <Button variant="primary" size="lg" block icon="play" onClick={onPlay}>
+      <Button variant="secondary" size="lg" block icon="play" onClick={onPlay}>
         {t('games.play')}
       </Button>
-    </div>
+    </article>
   );
 }

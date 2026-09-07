@@ -37,7 +37,7 @@ export function ReminderCard({
 
   return (
     <div
-      className="card stack-sm"
+      className={`reminder-card stack-sm ${isDone ? 'is-done' : ''} ${status === 'now' ? 'is-now' : ''}`}
       style={
         status === 'now'
           ? { borderColor: 'var(--primary-container)', borderWidth: 2 }
@@ -46,7 +46,7 @@ export function ReminderCard({
     >
       <div className="row" style={{ alignItems: 'flex-start' }}>
         <span className={`medallion ${medallionTone}`} aria-hidden="true">
-          {reminder.icon}
+          <Icon name={status === 'now' ? 'sun' : isDone ? 'check' : 'clock'} size={24} />
         </span>
         <div className="grow">
           {statusLabel[status] && (

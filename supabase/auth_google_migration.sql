@@ -3,6 +3,10 @@
 -- OAuth first-sign-in flow for new users.
 
 alter table public.profiles add column if not exists role_selected_at timestamptz;
+-- Caregivers can manage more than one patient. RLS remains the authorization
+-- boundary for every patient query and mutation.
+alter table public.patients drop constraint if exists patients_auth_user_id_key;
+alter table public.reminders alter column category set default 'custom'::public.reminder_category;
 drop policy if exists "update own profile fields" on public.profiles;
 update public.profiles
 set role_selected_at = coalesce(role_selected_at, created_at, now())
@@ -26,6 +30,13 @@ begin
 end;
 $$;
 
+-- Ensure both email/password and Google-created auth users receive an app
+-- profile. Recreating the trigger is safe for existing projects.
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function private.handle_new_user();
+
 drop function if exists public.select_my_app_role(public.app_role);
 
 create function public.select_my_app_role(selected_role public.app_role)
@@ -42,11 +53,14 @@ begin
   if selected_role = 'caregiver' then
     insert into public.caregivers (id) values (auth.uid()) on conflict (id) do nothing;
   else
-    insert into public.patients (auth_user_id, name)
-    select auth.uid(), coalesce(nullif(trim(display_name), ''), 'My profile')
-    from public.profiles where id = auth.uid()
-    on conflict (auth_user_id) do update set name = public.patients.name
-    returning id into selected_patient_id;
+    select p.id into selected_patient_id from public.patients p
+    where p.auth_user_id = auth.uid() order by p.created_at limit 1;
+    if selected_patient_id is null then
+      insert into public.patients (auth_user_id, name)
+      select auth.uid(), coalesce(nullif(trim(display_name), ''), 'My profile')
+      from public.profiles where id = auth.uid()
+      returning id into selected_patient_id;
+    end if;
   end if;
   return selected_patient_id;
 end;

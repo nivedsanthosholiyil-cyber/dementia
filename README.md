@@ -72,7 +72,9 @@ used, and no service-role value is accepted or mapped.
 
 Apply `supabase/schema.sql` before using the app. For an existing project,
 apply `supabase/auth_google_migration.sql` afterwards; it preserves existing
-role assignments while enabling first-sign-in role selection for Google users.
+role assignments, enables first-sign-in role selection for Google users, and
+allows one caregiver account to own multiple patient rows. It also repairs the
+reminder category default for projects created from an earlier schema version.
 Google and email/password accounts create/use `auth.users` identities and are
 authorized solely through the existing `profiles`, `patients`, and
 `caregiver_patient` RLS model. Link caregivers to patients through

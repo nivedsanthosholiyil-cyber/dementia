@@ -11,18 +11,18 @@ interface NavDef {
 
 const PATIENT_NAV: NavDef[] = [
   { to: '/home', labelKey: 'nav.home', icon: 'home' },
-  { to: '/games', labelKey: 'nav.games', icon: 'games' },
+  { to: '/games', labelKey: 'nav.activities', icon: 'games' },
+  { to: '/people', labelKey: 'nav.people', icon: 'users' },
   { to: '/reminders', labelKey: 'nav.reminders', icon: 'bell' },
-  { to: '/progress', labelKey: 'nav.progress', icon: 'chart' },
-  { to: '/settings', labelKey: 'nav.settings', icon: 'settings' },
+  { to: '/settings', labelKey: 'nav.more', icon: 'settings' },
 ];
 
 const CAREGIVER_NAV: NavDef[] = [
-  { to: '/caregiver', labelKey: 'nav.overview', icon: 'home', end: true },
-  { to: '/caregiver/progress', labelKey: 'nav.progress', icon: 'chart' },
+  { to: '/caregiver', labelKey: 'nav.home', icon: 'home', end: true },
+  { to: '/caregiver/patient', labelKey: 'nav.patients', icon: 'users' },
+  { to: '/caregiver/progress', labelKey: 'nav.activity', icon: 'chart' },
   { to: '/caregiver/alerts', labelKey: 'nav.alerts', icon: 'bell' },
-  { to: '/caregiver/patient', labelKey: 'nav.patient', icon: 'users' },
-  { to: '/caregiver/settings', labelKey: 'nav.settings', icon: 'settings' },
+  { to: '/caregiver/settings', labelKey: 'nav.more', icon: 'settings' },
 ];
 
 export function BottomNavigation({ role }: { role: 'patient' | 'caregiver' }) {

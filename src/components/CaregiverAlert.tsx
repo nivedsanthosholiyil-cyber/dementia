@@ -14,16 +14,10 @@ const toneClass: Record<CaregiverAlertProps['tone'], string> = {
   good: 'banner--green',
 };
 
-export function CaregiverAlert({ tone, icon, emoji, title, detail }: CaregiverAlertProps) {
+export function CaregiverAlert({ tone, icon, title, detail }: CaregiverAlertProps) {
   return (
     <div className={`banner ${toneClass[tone]}`}>
-      {emoji ? (
-        <span aria-hidden="true" style={{ fontSize: '1.4rem' }}>
-          {emoji}
-        </span>
-      ) : (
-        <Icon name={icon ?? 'sparkle'} size={22} />
-      )}
+      <Icon name={icon ?? (tone === 'warn' ? 'alert' : tone === 'good' ? 'check' : 'sparkle')} size={22} />
       <div>
         <strong>{title}</strong>
         {detail && <div style={{ fontSize: 'var(--fs-caption)' }}>{detail}</div>}

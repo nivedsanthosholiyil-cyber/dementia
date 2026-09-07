@@ -220,6 +220,9 @@
   gap: var(--space-xs);
   min-width: 0;
 }
+.brand > div:last-child {
+  min-width: 0;
+}
 .brand__logo {
   width: 2.5rem;
   height: 2.5rem;
@@ -237,11 +240,15 @@
   color: var(--secondary);
   line-height: 1;
   letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .brand__sub {
   font-size: 0.85rem;
   color: var(--on-surface-variant);
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 /* ---------- Bottom navigation ---------- */
@@ -397,6 +404,31 @@ textarea.input { min-height: 7rem; padding-block: var(--space-sm); resize: verti
   outline: none;
   border-color: var(--primary-container);
   box-shadow: 0 0 0 4px rgba(245, 166, 35, 0.22);
+}
+.password-field {
+  position: relative;
+}
+.password-field .input {
+  padding-right: 4.25rem;
+}
+.password-field__toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.25rem;
+  transform: translateY(-50%);
+  width: 3.25rem;
+  min-height: 3.25rem;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--on-surface-variant);
+}
+.password-field__toggle:hover,
+.password-field__toggle[aria-pressed='true'] {
+  background: var(--surface-container);
+  color: var(--secondary-dark);
 }
 .select {
   appearance: none;
@@ -819,6 +851,18 @@ textarea.input { min-height: 7rem; padding-block: var(--space-sm); resize: verti
 .metric-row + .metric-row {
   border-top: 1.5px solid var(--border-card);
 }
+.patient-list-heading {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.patient-list-heading > :first-child {
+  min-width: min(100%, 14rem);
+  flex: 1 1 14rem;
+}
+.patient-empty {
+  align-items: flex-start;
+  padding-top: var(--space-sm);
+}
 .progress-track {
   height: 0.75rem;
   border-radius: var(--radius-full);
@@ -935,6 +979,11 @@ textarea.input { min-height: 7rem; padding-block: var(--space-sm); resize: verti
   vertical-align: middle;
 }
 @media (max-width: 420px) {
+  .app-header__inner { padding-inline: var(--space-sm); }
+  .app-header__inner > .row { gap: 0.25rem; flex-shrink: 0; }
+  .app-header__inner > .row .btn--audio { width: 2.9rem; padding-inline: 0; }
+  .app-header__inner > .row .btn--audio span { display: none; }
+  .brand__name { font-size: 1.15rem; }
   .auth-card { padding: var(--space-md); }
   .auth-page h1 { font-size: var(--fs-h2); }
 }
