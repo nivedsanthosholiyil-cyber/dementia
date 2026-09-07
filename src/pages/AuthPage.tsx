@@ -31,6 +31,7 @@ export function AuthPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [otpFlow, setOtpFlow] = useState<OtpFlow>('login');
+  const [challengeId, setChallengeId] = useState('');
   const [resendSeconds, setResendSeconds] = useState(0);
   const [busy, setBusy] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -45,6 +46,7 @@ export function AuthPage() {
     setPassword('');
     setConfirmPassword('');
     setOtp('');
+    setChallengeId('');
   };
 
   useEffect(() => {
@@ -53,8 +55,9 @@ export function AuthPage() {
     return () => window.clearInterval(interval);
   }, [resendSeconds]);
 
-  const showOtp = (flow: OtpFlow) => {
+  const showOtp = (flow: OtpFlow, nextChallengeId: string) => {
     setOtpFlow(flow);
+    setChallengeId(nextChallengeId);
     setMode('otp');
     setOtp('');
     setResendSeconds(RESEND_COOLDOWN_SECONDS);
@@ -95,15 +98,18 @@ export function AuthPage() {
         setError('Passwords do not match.');
         return;
       }
+    } else if (!password) {
+      setError('Enter your password.');
+      return;
     }
     setBusy(true);
     try {
       if (mode === 'sign-up') {
-        await requestEmailOtp('signup', normalizedEmail, { password, displayName: name, language: settings.language });
-        showOtp('signup');
+        const nextChallengeId = await requestEmailOtp('signup', normalizedEmail, { password, displayName: name, language: settings.language });
+        showOtp('signup', nextChallengeId);
       } else {
-        await requestEmailOtp('login', normalizedEmail);
-        showOtp('login');
+        const nextChallengeId = await requestEmailOtp('login', normalizedEmail, { password });
+        showOtp('login', nextChallengeId);
       }
     } catch (reason) {
       setError(authErrorMessage(reason, mode === 'sign-up' ? 'Unable to create your account.' : 'Unable to send a verification code.'));
@@ -123,7 +129,7 @@ export function AuthPage() {
     }
     setBusy(true);
     try {
-      await verifyEmailOtp(otpFlow, email.trim().toLowerCase(), token);
+      await verifyEmailOtp(otpFlow, email.trim().toLowerCase(), token, challengeId, otpFlow === 'login' ? password : undefined);
       navigate('/', { replace: true });
     } catch (reason) {
       setError(authErrorMessage(reason, 'That code is invalid or has expired. Request a new code and try again.'));
@@ -138,7 +144,7 @@ export function AuthPage() {
     setError('');
     setBusy(true);
     try {
-      await resendEmailOtp(otpFlow, email.trim().toLowerCase());
+      await resendEmailOtp(otpFlow, email.trim().toLowerCase(), challengeId);
       setResendSeconds(RESEND_COOLDOWN_SECONDS);
       setMessage('A new verification code has been sent.');
     } catch (reason) {
@@ -173,8 +179,8 @@ export function AuthPage() {
     }
   };
 
-  const heading = mode === 'sign-up' ? 'Create your account' : mode === 'forgot-password' ? 'Reset your password' : mode === 'otp' ? 'Enter your verification code' : 'Sign in on this device.';
-  const submitLabel = mode === 'sign-up' ? 'Create account' : mode === 'forgot-password' ? 'Send reset link' : 'Send verification code';
+  const heading = mode === 'sign-up' ? 'Create your account' : mode === 'forgot-password' ? 'Reset your password' : mode === 'otp' ? 'Enter verification code' : 'Sign in on this device.';
+  const submitLabel = mode === 'sign-up' ? 'Create account' : mode === 'forgot-password' ? 'Send reset link' : 'Continue';
 
   return (
     <>
@@ -205,14 +211,14 @@ export function AuthPage() {
               <p className="muted">Enter the 6-digit code sent to {email.trim().toLowerCase()}.</p>
               <div className="field"><label className="field__label" htmlFor="auth-otp">Verification code</label><input id="auth-otp" className="input" value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={6} autoFocus /></div>
             </div>
-            <Button type="submit" size="lg" block disabled={busy}>{busy ? 'Verifying…' : 'Verify code'}</Button>
-            <Button type="button" size="lg" block variant="secondary" onClick={() => void resendOtp()} disabled={busy || resendSeconds > 0}>{resendSeconds > 0 ? `Resend code in ${resendSeconds}s` : 'Resend code'}</Button>
+            <Button type="submit" size="lg" block disabled={busy}>{busy ? 'Verifying…' : 'Verify'}</Button>
+            <Button type="button" size="lg" block variant="secondary" onClick={() => void resendOtp()} disabled={busy || resendSeconds > 0}>{resendSeconds > 0 ? `Resend OTP in ${resendSeconds}s` : 'Resend OTP'}</Button>
           </form> : <form className="stack" onSubmit={(event) => void submit(event)} noValidate>
             <div className="stack-sm">
               <h2 className="card-title">{mode === 'sign-up' ? 'Email and password' : 'Email address'}</h2>
               {mode === 'sign-up' && <div className="field"><label className="field__label" htmlFor="auth-name">Your name</label><input id="auth-name" className="input" value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" /></div>}
               <div className="field"><label className="field__label" htmlFor="auth-email">Email address</label><input id="auth-email" className="input" value={email} onChange={(event) => setEmail(event.target.value)} type="email" inputMode="email" autoComplete="email" autoFocus /></div>
-              {mode === 'sign-up' && <>
+              {(mode === 'sign-up' || mode === 'sign-in') && <>
                 <PasswordField id="auth-password" label="Password" value={password} onChange={setPassword} autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'} />
                 {mode === 'sign-up' && <>
                   <PasswordField id="auth-confirm-password" label="Confirm password" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" />

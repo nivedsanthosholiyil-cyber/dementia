@@ -1,6 +1,6 @@
 # OTP authentication deployment
 
-Apply the two SQL migrations in `supabase/migrations/` (or the updated
+Apply the three SQL migrations in `supabase/migrations/` (or the updated
 `supabase/schema.sql` for a new project), then deploy the `auth-otp` Edge
 Function with JWT verification disabled because sign-in and signup occur before
 there is a user session:
@@ -19,6 +19,13 @@ Email Templates section, update both **Confirm signup** and **Magic Link** to
 render `{{ .Token }}` (the six-digit OTP), not `{{ .ConfirmationURL }}`. Keep
 the password-recovery template unchanged. Google provider settings and Guest
 Mode need no changes.
+
+Login is intentionally not passwordless: `auth-otp` validates the email/password
+with a non-persisted server-side Supabase client before it requests the login OTP,
+then validates the password again before returning the session after OTP
+verification. The browser never receives that intermediate password-auth session.
+The short-lived challenge id is stored server-side in
+`private.auth_otp_challenges` and is only a correlation handle for the OTP screen.
 
 The Edge Function permits three OTP sends per email and per IP in fifteen
 minutes, and five code-verification attempts in fifteen minutes; the next

@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 export type OtpFlow = 'signup' | 'login';
 
 interface OtpSessionResponse {
+  challengeId?: string;
   session?: Session;
   error?: string;
 }
@@ -75,18 +76,20 @@ export async function requestEmailOtp(
   flow: OtpFlow,
   email: string,
   options?: { password?: string; displayName?: string; language?: LanguageCode },
-): Promise<void> {
-  await invokeOtp({ action: flow, email, password: options?.password, displayName: options?.displayName, language: options?.language });
+): Promise<string> {
+  const result = await invokeOtp({ action: flow, email, password: options?.password, displayName: options?.displayName, language: options?.language });
+  if (!result.challengeId) throw new Error('Unable to start verification. Please try again.');
+  return result.challengeId;
 }
 
 /** Requests another OTP without storing or generating a code in the browser. */
-export async function resendEmailOtp(flow: OtpFlow, email: string): Promise<void> {
-  await invokeOtp({ action: 'resend', flow, email });
+export async function resendEmailOtp(flow: OtpFlow, email: string, challengeId: string): Promise<void> {
+  await invokeOtp({ action: 'resend', flow, email, challengeId });
 }
 
 /** Verifies the Supabase OTP server-side and installs only the returned Auth session. */
-export async function verifyEmailOtp(flow: OtpFlow, email: string, token: string): Promise<void> {
-  const result = await invokeOtp({ action: 'verify', flow, email, token });
+export async function verifyEmailOtp(flow: OtpFlow, email: string, token: string, challengeId: string, password?: string): Promise<void> {
+  const result = await invokeOtp({ action: 'verify', flow, email, token, challengeId, password });
   if (!result.session?.access_token || !result.session.refresh_token) {
     throw new Error('That code could not be verified. Request a new code and try again.');
   }

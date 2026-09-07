@@ -1,4 +1,4 @@
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,7 +10,10 @@ const json = (body: Record<string, unknown>, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: corsHeaders });
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const languageCodes = ['en', 'hi', 'as', 'bn', 'lus', 'mni'];
+
+type Flow = 'signup' | 'login';
 
 function clientIp(request: Request): string {
   return (request.headers.get('cf-connecting-ip') ?? request.headers.get('x-forwarded-for')?.split(',')[0] ?? 'unknown').trim();
@@ -20,6 +23,46 @@ async function digest(value: string, salt: string): Promise<string> {
   const bytes = new TextEncoder().encode(`${salt}:${value}`);
   const hash = await crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function validFlow(value: unknown): value is Flow {
+  return value === 'signup' || value === 'login';
+}
+
+function invalidCredentials() {
+  return json({ error: 'The email or password is incorrect. Check both fields and try again.' }, 401);
+}
+
+async function createChallenge(admin: SupabaseClient, emailHash: string, flow: Flow, ipHash: string): Promise<string> {
+  const challengeId = crypto.randomUUID();
+  const { error } = await admin.rpc('create_auth_otp_challenge', {
+    p_challenge_id: challengeId,
+    p_email_key: emailHash,
+    p_flow: flow,
+    p_ip_key: ipHash,
+  });
+  if (error) throw error;
+  return challengeId;
+}
+
+async function challengeIsActive(admin: SupabaseClient, challengeId: string, emailHash: string, flow: Flow): Promise<boolean> {
+  const { data, error } = await admin.rpc('get_auth_otp_challenge', {
+    p_challenge_id: challengeId,
+    p_email_key: emailHash,
+    p_flow: flow,
+  });
+  if (error) throw error;
+  return Array.isArray(data) && data.length > 0;
+}
+
+async function consumeChallenge(admin: SupabaseClient, challengeId: string, emailHash: string, flow: Flow): Promise<boolean> {
+  const { data, error } = await admin.rpc('consume_auth_otp_challenge', {
+    p_challenge_id: challengeId,
+    p_email_key: emailHash,
+    p_flow: flow,
+  });
+  if (error) throw error;
+  return data === true;
 }
 
 Deno.serve(async (request) => {
@@ -34,25 +77,29 @@ Deno.serve(async (request) => {
 
   let body: Record<string, unknown>;
   try { body = await request.json(); } catch { return json({ error: 'Request could not be completed.' }, 400); }
+
   const action = typeof body.action === 'string' ? body.action : '';
   const flow = typeof body.flow === 'string' ? body.flow : action;
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
-  if (!emailPattern.test(email) || !['signup', 'login'].includes(flow) || !['signup', 'login', 'resend', 'verify'].includes(action)) {
+  if (!emailPattern.test(email) || !validFlow(flow) || !['signup', 'login', 'resend', 'verify'].includes(action)) {
     return json({ error: 'Please check the information and try again.' }, 400);
   }
 
-  const admin = createClient(url, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const admin = createClient(url, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
   const auth = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
   const limitAction = action === 'verify' ? 'otp_verify' : flow === 'login' ? 'otp_login' : 'otp_signup';
   const maxAttempts = action === 'verify' ? 5 : 3;
-  const windowSeconds = action === 'verify' ? 15 * 60 : 15 * 60;
-  const lockSeconds = action === 'verify' ? 15 * 60 : 15 * 60;
+  const windowSeconds = 15 * 60;
+  const lockSeconds = 15 * 60;
+  let emailHash = '';
+  let ipHash = '';
+
   try {
-    const [emailKey, ipKey] = await Promise.all([
+    [emailHash, ipHash] = await Promise.all([
       digest(`email:${email}`, rateLimitSalt),
       digest(`ip:${clientIp(request)}`, rateLimitSalt),
     ]);
-    const attempts = await Promise.all([emailKey, ipKey].map(async (subjectKey) => {
+    const attempts = await Promise.all([emailHash, ipHash].map(async (subjectKey) => {
       const { data, error } = await admin.rpc('consume_auth_rate_limit', {
         subject_key: subjectKey, action_name: limitAction, max_attempts: maxAttempts,
         window_seconds: windowSeconds, lock_seconds: lockSeconds,
@@ -65,34 +112,78 @@ Deno.serve(async (request) => {
     return json({ error: 'Request could not be completed right now. Please try again.' }, 503);
   }
 
-  if (action === 'signup') {
-    const password = typeof body.password === 'string' ? body.password : '';
-    const displayName = typeof body.displayName === 'string' ? body.displayName.trim().slice(0, 100) : '';
-    const language = typeof body.language === 'string' && languageCodes.includes(body.language) ? body.language : 'en';
-    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password) || !displayName) {
-      return json({ error: 'Please check the information and try again.' }, 400);
+  try {
+    if (action === 'signup') {
+      const password = typeof body.password === 'string' ? body.password : '';
+      const displayName = typeof body.displayName === 'string' ? body.displayName.trim().slice(0, 100) : '';
+      const language = typeof body.language === 'string' && languageCodes.includes(body.language) ? body.language : 'en';
+      if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password) || !displayName) {
+        return json({ error: 'Please check the information and try again.' }, 400);
+      }
+
+      const { data, error } = await auth.auth.signUp({ email, password, options: { data: { display_name: displayName, language } } });
+      const duplicate = error?.message?.toLowerCase().includes('already') || data.user?.identities?.length === 0;
+      if (error || !data.user || duplicate) {
+        return json({ error: duplicate ? 'An account with this email already exists. Try signing in instead.' : 'Unable to create this account right now.' }, 400);
+      }
+
+      // A normal signup sends the confirmation OTP. If a project is temporarily
+      // autoconfirmed, send an OTP explicitly while keeping its session server-side.
+      if (data.session) {
+        const { error: otpError } = await auth.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+        if (otpError) return json({ error: 'Unable to send a verification code right now.' }, 503);
+      }
+      const challengeId = await createChallenge(admin, emailHash, 'signup', ipHash);
+      return json({ ok: true, challengeId });
     }
-    const { data, error } = await auth.auth.signUp({ email, password, options: { data: { display_name: displayName, language } } });
-    if (error || !data.user || data.user.identities?.length === 0) return json({ error: error?.message.includes('already') || data.user?.identities?.length === 0 ? 'An account with this email already exists. Try signing in instead.' : 'Unable to create this account right now.' }, 400);
-    return json({ ok: true });
-  }
 
-  if (action === 'resend' && flow === 'signup') {
-    const { error } = await auth.auth.resend({ type: 'signup', email });
-    if (error) return json({ error: 'Unable to resend a verification code right now.' }, 503);
-    return json({ ok: true });
-  }
+    if (action === 'login') {
+      const password = typeof body.password === 'string' ? body.password : '';
+      if (!password) return invalidCredentials();
 
-  if (action === 'login' || (action === 'resend' && flow === 'login')) {
-    // This deliberately gives the same success response for nonexistent accounts.
-    // Supabase's shouldCreateUser:false prevents an OTP request from creating one.
-    await auth.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
-    return json({ ok: true });
-  }
+      // This is the password gate. The returned session stays inside this
+      // non-persisted server-side client and is never sent to the browser.
+      const { data: passwordResult, error: passwordError } = await auth.auth.signInWithPassword({ email, password });
+      if (passwordError || !passwordResult.user) return invalidCredentials();
 
-  const token = typeof body.token === 'string' ? body.token.replace(/\s/g, '') : '';
-  if (!/^\d{6}$/.test(token)) return json({ error: 'That code is invalid or has expired.' }, 400);
-  const { data, error } = await auth.auth.verifyOtp({ email, token, type: 'email' });
-  if (error || !data.session) return json({ error: 'That code is invalid or has expired.' }, 400);
-  return json({ session: data.session });
+      const { error: otpError } = await auth.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+      if (otpError) return json({ error: 'Unable to send a verification code right now.' }, 503);
+      const challengeId = await createChallenge(admin, emailHash, 'login', ipHash);
+      return json({ ok: true, challengeId });
+    }
+
+    const challengeId = typeof body.challengeId === 'string' ? body.challengeId : '';
+    if (!uuidPattern.test(challengeId) || !(await challengeIsActive(admin, challengeId, emailHash, flow))) {
+      return json({ error: 'This verification request has expired. Start again and request a new code.' }, 400);
+    }
+
+    if (action === 'resend') {
+      const resendResult = flow === 'signup'
+        ? await auth.auth.resend({ type: 'signup', email })
+        : await auth.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+      if (resendResult.error) return json({ error: 'Unable to resend a verification code right now.' }, 503);
+      return json({ ok: true, challengeId });
+    }
+
+    const token = typeof body.token === 'string' ? body.token.replace(/\s/g, '') : '';
+    if (!/^\d{6}$/.test(token)) return json({ error: 'That code is invalid or has expired.' }, 400);
+
+    // Re-check the password immediately before issuing the final session. This
+    // prevents a caller from turning an OTP alone into a passwordless login.
+    if (flow === 'login') {
+      const password = typeof body.password === 'string' ? body.password : '';
+      if (!password) return invalidCredentials();
+      const { data: passwordResult, error: passwordError } = await auth.auth.signInWithPassword({ email, password });
+      if (passwordError || !passwordResult.user) return invalidCredentials();
+    }
+
+    const { data, error } = await auth.auth.verifyOtp({ email, token, type: 'email' });
+    if (error || !data.session) return json({ error: 'That code is invalid or has expired.' }, 400);
+    if (!(await consumeChallenge(admin, challengeId, emailHash, flow))) {
+      return json({ error: 'This verification request has expired. Start again and request a new code.' }, 400);
+    }
+    return json({ session: data.session });
+  } catch {
+    return json({ error: 'Request could not be completed right now. Please try again.' }, 503);
+  }
 });

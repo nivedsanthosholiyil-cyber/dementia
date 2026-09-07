@@ -33,12 +33,13 @@ browser session persistence. It accepts `VITE_SUPABASE_URL` and
 
 ### Email/password configuration
 
-The app uses `supabase.auth.signUp`, `signInWithPassword`,
-`resetPasswordForEmail`, and `updateUser`; it does not implement a second
-password store. In Supabase **Authentication > Providers**, enable Email and
-keep Google enabled. Choose the desired email-confirmation behavior. If email
-confirmation is enabled, new users see a confirmation message and must return
-to the app to sign in after confirming.
+The app uses the `auth-otp` Edge Function for email/password + OTP
+authentication; it does not implement a second password store. In Supabase
+**Authentication > Providers**, enable Email and **Confirm email**. Configure
+the **Confirm signup** and **Magic Link** email templates to render
+`{{ .Token }}` as the six-digit OTP, not `{{ .ConfirmationURL }}`. Apply the
+SQL migrations and deploy the function using
+[`docs/otp-auth-setup.md`](docs/otp-auth-setup.md).
 
 In **Authentication > URL Configuration**, set the Site URL to the deployed
 Vercel production URL and add that URL plus `/reset-password` to Redirect URLs.
@@ -47,11 +48,14 @@ Also add `http://localhost:5173` and
 redirects from `window.location.origin`, so the production host is never
 hard-coded in frontend code.
 
-The first sign-in for either provider uses the existing `profiles` trigger and
-role-selection flow. Choosing Patient creates the RLS-protected `patients`
-row with `auth.uid()`; choosing Caregiver loads only active
-`caregiver_patient` links. `My People` remains scoped by the existing
-`private.can_access_patient` helper and RLS policies.
+Signup is `name + email + password + confirmation` → OTP verification →
+authenticated session. Login is `email + password` → password validation → OTP
+verification → authenticated session. The intermediate password-check session
+is never returned to the browser. The first verified sign-in for either provider
+uses the existing `profiles` trigger and role-selection flow. Choosing Patient
+creates the RLS-protected `patients` row with `auth.uid()`; choosing Caregiver
+loads only active `caregiver_patient` links. `My People` remains scoped by the
+existing `private.can_access_patient` helper and RLS policies.
 
 ### Guest Mode
 
