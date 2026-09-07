@@ -47,6 +47,17 @@ function signupErrorMessage(error: unknown, duplicate: boolean): string {
   return 'Unable to create this account right now.';
 }
 
+function otpSendErrorMessage(error: unknown): string {
+  const code = errorCode(error);
+  if (code === 'over_email_send_rate_limit' || code === 'over_request_rate_limit') {
+    return 'Supabase email sending is rate-limited. Please wait before requesting another code.';
+  }
+  if (code === 'email_provider_disabled' || code === 'smtp_error') {
+    return 'Supabase email delivery is not configured correctly. Please contact the administrator.';
+  }
+  return 'Unable to send a verification code right now.';
+}
+
 async function createChallenge(admin: SupabaseClient, emailHash: string, flow: Flow, ipHash: string): Promise<string> {
   const challengeId = crypto.randomUUID();
   const { error } = await admin.rpc('create_auth_otp_challenge', {
@@ -149,7 +160,10 @@ Deno.serve(async (request) => {
       // autoconfirmed, send an OTP explicitly while keeping its session server-side.
       if (data.session) {
         const { error: otpError } = await auth.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
-        if (otpError) return json({ error: 'Unable to send a verification code right now.' }, 503);
+        if (otpError) {
+          console.error('auth-otp signup email rejected', { code: errorCode(otpError) });
+          return json({ error: otpSendErrorMessage(otpError) }, 503);
+        }
       }
       const challengeId = await createChallenge(admin, emailHash, 'signup', ipHash);
       return json({ ok: true, challengeId });
@@ -165,7 +179,10 @@ Deno.serve(async (request) => {
       if (passwordError || !passwordResult.user) return invalidCredentials();
 
       const { error: otpError } = await auth.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
-      if (otpError) return json({ error: 'Unable to send a verification code right now.' }, 503);
+      if (otpError) {
+        console.error('auth-otp login email rejected', { code: errorCode(otpError) });
+        return json({ error: otpSendErrorMessage(otpError) }, 503);
+      }
       const challengeId = await createChallenge(admin, emailHash, 'login', ipHash);
       return json({ ok: true, challengeId });
     }
@@ -179,7 +196,10 @@ Deno.serve(async (request) => {
       const resendResult = flow === 'signup'
         ? await auth.auth.resend({ type: 'signup', email })
         : await auth.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
-      if (resendResult.error) return json({ error: 'Unable to resend a verification code right now.' }, 503);
+      if (resendResult.error) {
+        console.error('auth-otp resend rejected', { code: errorCode(resendResult.error) });
+        return json({ error: otpSendErrorMessage(resendResult.error) }, 503);
+      }
       return json({ ok: true, challengeId });
     }
 
