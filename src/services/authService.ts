@@ -1,11 +1,20 @@
-import type { AppRole } from '@/types';
+import type { Session } from '@supabase/supabase-js';
+import type { AppRole, LanguageCode } from '@/types';
 import { supabase } from '@/lib/supabase';
+
+export type OtpFlow = 'signup' | 'login';
+
+interface OtpSessionResponse {
+  session?: Session;
+  error?: string;
+}
 
 export interface AuthContext {
   userId: string;
   role: AppRole;
   displayName: string;
   needsRoleSelection: boolean;
+  language: LanguageCode;
 }
 
 export const PASSWORD_REQUIREMENTS = 'Use at least 8 characters, including one letter and one number.';
@@ -23,7 +32,7 @@ export function authErrorMessage(error: unknown, fallback: string): string {
   const message = error instanceof Error ? error.message : String(error ?? '');
   const normalized = message.toLowerCase();
   if (normalized.includes('email not confirmed')) {
-    return 'Your email is not confirmed yet. Check your inbox for the confirmation link, then try again.';
+    return 'Your email still needs to be verified. Request a new code and try again.';
   }
   if (normalized.includes('invalid login credentials')) {
     return 'The email or password is incorrect. Check both fields and try again.';
@@ -38,6 +47,52 @@ export function authErrorMessage(error: unknown, fallback: string): string {
     return 'We could not reach Supabase. Check your internet connection and try again.';
   }
   return message || fallback;
+}
+
+async function edgeError(error: unknown, fallback: string): Promise<Error> {
+  const context = (error as { context?: unknown } | null)?.context;
+  if (context instanceof Response) {
+    try {
+      const body = await context.clone().json() as { error?: string };
+      if (body.error) return new Error(body.error);
+    } catch {
+      // The generic message below intentionally does not disclose account state.
+    }
+  }
+  return new Error(authErrorMessage(error, fallback));
+}
+
+async function invokeOtp(payload: Record<string, unknown>): Promise<OtpSessionResponse> {
+  if (!supabase) throw new Error('Supabase is not configured.');
+  const { data, error } = await supabase.functions.invoke<OtpSessionResponse>('auth-otp', { body: payload });
+  if (error) throw await edgeError(error, 'Unable to complete this request right now.');
+  if (data?.error) throw new Error(data.error);
+  return data ?? {};
+}
+
+/** Sends a Supabase-managed email OTP through the rate-limited Edge Function. */
+export async function requestEmailOtp(
+  flow: OtpFlow,
+  email: string,
+  options?: { password?: string; displayName?: string; language?: LanguageCode },
+): Promise<void> {
+  await invokeOtp({ action: flow, email, password: options?.password, displayName: options?.displayName, language: options?.language });
+}
+
+/** Requests another OTP without storing or generating a code in the browser. */
+export async function resendEmailOtp(flow: OtpFlow, email: string): Promise<void> {
+  await invokeOtp({ action: 'resend', flow, email });
+}
+
+/** Verifies the Supabase OTP server-side and installs only the returned Auth session. */
+export async function verifyEmailOtp(flow: OtpFlow, email: string, token: string): Promise<void> {
+  const result = await invokeOtp({ action: 'verify', flow, email, token });
+  if (!result.session?.access_token || !result.session.refresh_token) {
+    throw new Error('That code could not be verified. Request a new code and try again.');
+  }
+  if (!supabase) throw new Error('Supabase is not configured.');
+  const { error } = await supabase.auth.setSession(result.session);
+  if (error) throw error;
 }
 
 export function authRedirectUrl(path = '/'): string {
@@ -104,10 +159,16 @@ export async function currentAuthContext(): Promise<AuthContext | null> {
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error) throw error;
   if (!user) return null;
-  const { data: profile, error: profileError } = await supabase.from('profiles').select('role, display_name, role_selected_at').eq('id', user.id).maybeSingle();
+  const { data: profile, error: profileError } = await supabase.from('profiles').select('role, display_name, role_selected_at, language').eq('id', user.id).maybeSingle();
   if (profileError) throw profileError;
   if (!profile) return null;
-  return { userId: user.id, role: profile.role as AppRole, displayName: profile.display_name || user.email || 'User', needsRoleSelection: !profile.role_selected_at };
+  return { userId: user.id, role: profile.role as AppRole, displayName: profile.display_name || user.email || 'User', needsRoleSelection: !profile.role_selected_at, language: profile.language as LanguageCode };
+}
+
+export async function setMyLanguage(language: LanguageCode): Promise<void> {
+  if (!supabase) return;
+  const { error } = await supabase.rpc('set_my_language', { selected_language: language });
+  if (error) throw error;
 }
 
 export async function selectMyAppRole(role: AppRole): Promise<string | null> {

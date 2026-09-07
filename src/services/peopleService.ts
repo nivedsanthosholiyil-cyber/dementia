@@ -5,8 +5,8 @@ import { storageService } from './storageService';
 
 const bucket = 'patient-media';
 
-export async function listPeople(patientId: string): Promise<PersonMemory[]> {
-  if (isGuestPatientId(patientId)) {
+export async function listPeople(patientId: string, useGuestStorage = false): Promise<PersonMemory[]> {
+  if (useGuestStorage || isGuestPatientId(patientId)) {
     const people = await storageService.getPersonMemories();
     return people.filter((person) => person.patient_id === patientId).sort((a, b) => a.name.localeCompare(b.name));
   }
@@ -16,8 +16,8 @@ export async function listPeople(patientId: string): Promise<PersonMemory[]> {
   return (data ?? []) as PersonMemory[];
 }
 
-export async function savePerson(person: Partial<PersonMemory> & Pick<PersonMemory, 'patient_id' | 'name'>, photo?: File | null, voice?: File | null) {
-  if (isGuestPatientId(person.patient_id)) {
+export async function savePerson(person: Partial<PersonMemory> & Pick<PersonMemory, 'patient_id' | 'name'>, photo?: File | null, voice?: File | null, useGuestStorage = false) {
+  if (useGuestStorage || isGuestPatientId(person.patient_id)) {
     const localPerson: PersonMemory = {
       id: person.id ?? `guest-person-${crypto.randomUUID()}`,
       patient_id: person.patient_id,
@@ -55,8 +55,8 @@ export async function savePerson(person: Partial<PersonMemory> & Pick<PersonMemo
   return data as PersonMemory;
 }
 
-export async function removePerson(id: string) {
-  if (id.startsWith('guest-person-')) {
+export async function removePerson(id: string, useGuestStorage = false) {
+  if (useGuestStorage || id.startsWith('guest-person-')) {
     await storageService.deletePersonMemory(id);
     return;
   }
@@ -65,8 +65,8 @@ export async function removePerson(id: string) {
   if (error) throw error;
 }
 
-export async function personPhotoUrl(path: string | null) {
-  if (!supabase || !path) return null;
+export async function personPhotoUrl(path: string | null, useGuestStorage = false) {
+  if (useGuestStorage || !supabase || !path) return null;
   const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
   if (error) throw error;
   return data.signedUrl;

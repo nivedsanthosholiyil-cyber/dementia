@@ -25,28 +25,57 @@ export function isVoiceSupported(): boolean {
 
 let currentLang: LanguageCode = 'en';
 let enabled = true;
+let voices: SpeechSynthesisVoice[] = [];
+let listeningForVoices = false;
+
+function refreshVoices(): void {
+  if (!isVoiceSupported()) return;
+  try { voices = window.speechSynthesis.getVoices(); } catch { voices = []; }
+}
+
+const onVoicesChanged = () => refreshVoices();
+
+/** Starts voice discovery once the browser is ready; safe to call repeatedly. */
+export function initializeVoiceService(): void {
+  if (!isVoiceSupported()) return;
+  refreshVoices();
+  if (!listeningForVoices) {
+    window.speechSynthesis.addEventListener('voiceschanged', onVoicesChanged);
+    listeningForVoices = true;
+  }
+}
+
+/** Removes the module listener when the app provider unmounts. */
+export function disposeVoiceService(): void {
+  if (isVoiceSupported() && listeningForVoices) {
+    window.speechSynthesis.removeEventListener('voiceschanged', onVoicesChanged);
+  }
+  listeningForVoices = false;
+}
 
 export function configureVoice(lang: LanguageCode, isEnabled: boolean): void {
   currentLang = lang;
   enabled = isEnabled;
+  initializeVoiceService();
 }
 
 function pickVoice(langTag: string): SpeechSynthesisVoice | undefined {
-  const voices = window.speechSynthesis.getVoices();
+  refreshVoices();
   if (!voices.length) return undefined;
   // Prefer exact locale, then base language, then any.
-  const base = langTag.split('-')[0];
+  const base = langTag.split('-')[0].toLowerCase();
   return (
     voices.find((v) => v.lang.toLowerCase() === langTag.toLowerCase()) ||
-    voices.find((v) => v.lang.toLowerCase().startsWith(base)) ||
-    voices.find((v) => v.lang.toLowerCase().startsWith('en'))
+    voices.find((v) => v.lang.toLowerCase() === base || v.lang.toLowerCase().startsWith(`${base}-`)) ||
+    voices.find((v) => v.lang.toLowerCase() === 'en' || v.lang.toLowerCase().startsWith('en-'))
   );
 }
 
 /** Speak text. No-op (returns false) when disabled or unsupported. */
-export function speak(text: string, langOverride?: LanguageCode): boolean {
+export function speak(text: string, langOverride?: LanguageCode, onError?: (message: string) => void): boolean {
   if (!enabled || !isVoiceSupported() || !text.trim()) return false;
   try {
+    initializeVoiceService();
     window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(text);
     const tag = BCP47[langOverride ?? currentLang] ?? 'en-IN';
@@ -56,9 +85,16 @@ export function speak(text: string, langOverride?: LanguageCode): boolean {
     utter.volume = 1;
     const v = pickVoice(tag);
     if (v) utter.voice = v;
+    utter.onerror = (event) => {
+      // Cancelling a previous sentence to start a new one is intentional.
+      if (event.error !== 'interrupted' && event.error !== 'canceled') onError?.('Voice reading could not start. Please try again.');
+    };
     window.speechSynthesis.speak(utter);
+    // Safari may leave a queued utterance paused after an interruption.
+    if (window.speechSynthesis.paused) window.speechSynthesis.resume();
     return true;
   } catch {
+    onError?.('Voice reading could not start. Please try again.');
     return false;
   }
 }
@@ -70,17 +106,5 @@ export function stopSpeaking(): void {
     } catch {
       /* ignore */
     }
-  }
-}
-
-// Warm up the voice list (some browsers load voices asynchronously).
-if (isVoiceSupported()) {
-  try {
-    window.speechSynthesis.getVoices();
-    window.speechSynthesis.onvoiceschanged = () => {
-      window.speechSynthesis.getVoices();
-    };
-  } catch {
-    /* ignore */
   }
 }

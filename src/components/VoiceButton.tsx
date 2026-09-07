@@ -14,9 +14,13 @@ interface VoiceButtonProps {
 
 /** A pill "Read Aloud" control used across patient screens. */
 export function VoiceButton({ text, label, compact, className = '' }: VoiceButtonProps) {
-  const { say, supported, enabled } = useVoice();
+  const { say, supported, enabled, error } = useVoice();
   const { showToast } = useToast();
   const { t } = useI18n();
+
+  useEffect(() => {
+    if (error) showToast(error, '🔈');
+  }, [error, showToast]);
 
   const handle = () => {
     if (!supported) {
@@ -43,3 +47,4 @@ export function VoiceButton({ text, label, compact, className = '' }: VoiceButto
     </button>
   );
 }
+import { useEffect } from 'react';
