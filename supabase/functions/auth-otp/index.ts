@@ -33,6 +33,20 @@ function invalidCredentials() {
   return json({ error: 'The email or password is incorrect. Check both fields and try again.' }, 401);
 }
 
+function errorCode(error: unknown): string {
+  const code = (error as { code?: unknown } | null)?.code;
+  return typeof code === 'string' ? code : 'unknown';
+}
+
+function signupErrorMessage(error: unknown, duplicate: boolean): string {
+  if (duplicate) return 'An account with this email already exists. Try signing in instead.';
+  const code = errorCode(error);
+  if (code === 'email_address_invalid') return 'Supabase rejected this email address. Use a valid personal email address.';
+  if (code === 'weak_password') return 'Choose a stronger password with at least 8 characters, including a letter and a number.';
+  if (code === 'over_email_send_rate_limit' || code === 'over_request_rate_limit') return 'Too many attempts. Please wait before trying again.';
+  return 'Unable to create this account right now.';
+}
+
 async function createChallenge(admin: SupabaseClient, emailHash: string, flow: Flow, ipHash: string): Promise<string> {
   const challengeId = crypto.randomUUID();
   const { error } = await admin.rpc('create_auth_otp_challenge', {
@@ -108,7 +122,8 @@ Deno.serve(async (request) => {
       return data === true;
     }));
     if (attempts.some((allowed) => !allowed)) return json({ error: 'Too many requests. Please wait before trying again.' }, 429);
-  } catch {
+  } catch (error) {
+    console.error('auth-otp rate-limit failure', { action, flow, code: errorCode(error) });
     return json({ error: 'Request could not be completed right now. Please try again.' }, 503);
   }
 
@@ -124,7 +139,8 @@ Deno.serve(async (request) => {
       const { data, error } = await auth.auth.signUp({ email, password, options: { data: { display_name: displayName, language } } });
       const duplicate = error?.message?.toLowerCase().includes('already') || data.user?.identities?.length === 0;
       if (error || !data.user || duplicate) {
-        return json({ error: duplicate ? 'An account with this email already exists. Try signing in instead.' : 'Unable to create this account right now.' }, 400);
+        if (error) console.error('auth-otp signup rejected', { code: errorCode(error) });
+        return json({ error: signupErrorMessage(error, duplicate) }, 400);
       }
 
       // A normal signup sends the confirmation OTP. If a project is temporarily
@@ -183,7 +199,8 @@ Deno.serve(async (request) => {
       return json({ error: 'This verification request has expired. Start again and request a new code.' }, 400);
     }
     return json({ session: data.session });
-  } catch {
+  } catch (error) {
+    console.error('auth-otp request failure', { action, flow, code: errorCode(error) });
     return json({ error: 'Request could not be completed right now. Please try again.' }, 503);
   }
 });
