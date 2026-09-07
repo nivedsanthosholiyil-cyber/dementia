@@ -102,7 +102,9 @@ Deno.serve(async (request) => {
   const admin = createClient(url, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
   const auth = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
   const limitAction = action === 'verify' ? 'otp_verify' : flow === 'login' ? 'otp_login' : 'otp_signup';
-  const maxAttempts = action === 'verify' ? 5 : 3;
+  // Allow up to eight OTP sends/resends per email and IP in the window, while
+  // keeping verification attempts at five to limit brute-force guessing.
+  const maxAttempts = action === 'verify' ? 5 : 8;
   const windowSeconds = 15 * 60;
   const lockSeconds = 15 * 60;
   let emailHash = '';

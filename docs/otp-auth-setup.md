@@ -27,8 +27,8 @@ verification. The browser never receives that intermediate password-auth session
 The short-lived challenge id is stored server-side in
 `private.auth_otp_challenges` and is only a correlation handle for the OTP screen.
 
-The Edge Function permits three OTP sends per email and per IP in fifteen
-minutes, and five code-verification attempts in fifteen minutes; the next
+The Edge Function permits eight OTP sends/resends per email and per IP in
+fifteen minutes, and five code-verification attempts in fifteen minutes; the next
 request locks that key for fifteen minutes. Supabase Auth retains its own
 mailer, token-expiry, and abuse protections. The database only receives salted
 SHA-256 identifiers, never a raw email address or IP.
