@@ -101,8 +101,8 @@ Deno.serve(async (request) => {
     ]);
     const attempts = await Promise.all([emailHash, ipHash].map(async (subjectKey) => {
       const { data, error } = await admin.rpc('consume_auth_rate_limit', {
-        subject_key: subjectKey, action_name: limitAction, max_attempts: maxAttempts,
-        window_seconds: windowSeconds, lock_seconds: lockSeconds,
+        p_subject_key: subjectKey, p_action_name: limitAction, p_max_attempts: maxAttempts,
+        p_window_seconds: windowSeconds, p_lock_seconds: lockSeconds,
       });
       if (error) throw error;
       return data === true;
