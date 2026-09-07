@@ -1,6 +1,6 @@
 # OTP authentication deployment
 
-Apply the three SQL migrations in `supabase/migrations/` (or the updated
+Apply the four SQL migrations in `supabase/migrations/` (or the updated
 `supabase/schema.sql` for a new project), then deploy the `auth-otp` Edge
 Function with JWT verification disabled because sign-in and signup occur before
 there is a user session:
