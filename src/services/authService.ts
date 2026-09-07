@@ -20,6 +20,17 @@ export interface AuthContext {
 
 export const PASSWORD_REQUIREMENTS = 'Use at least 8 characters, including one letter and one number.';
 
+const INTERNAL_AUTH_DOMAIN = 'users.memorycare.app';
+
+export function isValidUsername(username: string): boolean {
+  return /^[A-Za-z0-9_]{3,32}$/.test(username.trim());
+}
+
+/** Supabase Auth is email-based; this internal identity keeps the UI username-only. */
+function authEmailForUsername(username: string): string {
+  return `${username.trim().toLowerCase()}@${INTERNAL_AUTH_DOMAIN}`;
+}
+
 export function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
@@ -113,18 +124,18 @@ export async function signInWithGoogle() {
   if (error) throw error;
 }
 
-export async function signUp(email: string, password: string, displayName = '', role?: AppRole) {
+export async function signUp(username: string, password: string, displayName = '', role?: AppRole) {
   if (!supabase) throw new Error('Supabase is not configured.');
   const metadata = { display_name: displayName.trim(), ...(role ? { requested_role: role } : {}) };
-  const { data, error } = await supabase.auth.signUp({ email, password, options: { data: metadata } });
+  const { data, error } = await supabase.auth.signUp({ email: authEmailForUsername(username), password, options: { data: { ...metadata, username: username.trim().toLowerCase() } } });
   if (error) throw error;
   if (!data.user) throw new Error('No account was returned.');
   return { user: data.user, session: data.session };
 }
 
-export async function signIn(email: string, password: string) {
+export async function signIn(username: string, password: string) {
   if (!supabase) throw new Error('Supabase is not configured.');
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email: authEmailForUsername(username), password });
   if (error) throw error;
   return data;
 }
