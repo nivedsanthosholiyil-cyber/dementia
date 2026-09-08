@@ -432,3 +432,51 @@ html[data-theme='dark'] .auth-help__heading > span { color: var(--on-secondary-c
   html[data-theme='system'] .auth-help__heading,
   html[data-theme='system'] .auth-help__heading > span { color: var(--on-secondary-container); }
 }
+
+/* Override the older mobile skin when a user chooses a dark appearance. */
+html[data-theme='dark'] body,
+html[data-theme='dark'] .app-shell { background: var(--surface); color: var(--on-surface); }
+html[data-theme='dark'] .app-header,
+html[data-theme='dark'] .bottom-nav { background: var(--surface); border-color: var(--border-card); }
+html[data-theme='dark'] .brand__name,
+html[data-theme='dark'] .page h1,
+html[data-theme='dark'] .page h2,
+html[data-theme='dark'] .page h3,
+html[data-theme='dark'] .page h4,
+html[data-theme='dark'] .home-reassurance strong { color: var(--on-surface); }
+html[data-theme='dark'] .brand__sub,
+html[data-theme='dark'] .page-sub,
+html[data-theme='dark'] .muted,
+html[data-theme='dark'] .text-muted,
+html[data-theme='dark'] .auth-help .muted { color: var(--on-surface-variant); }
+html[data-theme='dark'] .card,
+html[data-theme='dark'] .stat-card,
+html[data-theme='dark'] .input,
+html[data-theme='dark'] .select,
+html[data-theme='dark'] .field-input { background: var(--surface-container-lowest); border-color: var(--border-card); color: var(--on-surface); }
+html[data-theme='dark'] .btn--secondary { background: var(--surface-container-high); border-color: var(--border-strong); color: var(--on-secondary-container); }
+html[data-theme='dark'] .btn--ghost { color: var(--secondary); }
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme='system'] body,
+  html[data-theme='system'] .app-shell { background: var(--surface); color: var(--on-surface); }
+  html[data-theme='system'] .app-header,
+  html[data-theme='system'] .bottom-nav { background: var(--surface); border-color: var(--border-card); }
+  html[data-theme='system'] .brand__name,
+  html[data-theme='system'] .page h1,
+  html[data-theme='system'] .page h2,
+  html[data-theme='system'] .page h3,
+  html[data-theme='system'] .page h4 { color: var(--on-surface); }
+  html[data-theme='system'] .brand__sub,
+  html[data-theme='system'] .page-sub,
+  html[data-theme='system'] .muted,
+  html[data-theme='system'] .text-muted,
+  html[data-theme='system'] .auth-help .muted { color: var(--on-surface-variant); }
+  html[data-theme='system'] .card,
+  html[data-theme='system'] .stat-card,
+  html[data-theme='system'] .input,
+  html[data-theme='system'] .select,
+  html[data-theme='system'] .field-input { background: var(--surface-container-lowest); border-color: var(--border-card); color: var(--on-surface); }
+  html[data-theme='system'] .btn--secondary { background: var(--surface-container-high); border-color: var(--border-strong); color: var(--on-secondary-container); }
+  html[data-theme='system'] .btn--ghost { color: var(--secondary); }
+}
