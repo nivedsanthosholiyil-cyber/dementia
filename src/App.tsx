@@ -33,6 +33,7 @@ import { ChooseRole } from '@/pages/ChooseRole';
 import { ResetPassword } from '@/pages/ResetPassword';
 import { AuthPage } from '@/pages/AuthPage';
 import { isSupabaseConfigured } from '@/lib/supabase';
+import { AdminErrors } from '@/pages/AdminErrors';
 
 /** Bridges settings.language into the i18n provider. */
 function I18nBridge({ children }: { children: ReactNode }) {
@@ -87,6 +88,7 @@ function AppRoutes() {
       <Route path="/" element={<LandingRoute />} />
       <Route path="/auth" element={isSupabaseConfigured ? <AuthPage /> : <Navigate to="/" replace />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/admin/errors" element={<AdminErrors />} />
       <Route path="/language" element={<LanguageSelect />} />
       <Route path="/choose-role" element={<RequireOnboarded><ChooseRole /></RequireOnboarded>} />
 

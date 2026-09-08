@@ -1,8 +1,9 @@
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
+import { logEdgeEvent, requestIdFor } from '../_shared/errorLogger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-request-id',
   'Content-Type': 'application/json',
 };
 
@@ -112,6 +113,8 @@ Deno.serve(async (request) => {
 
   const admin = createClient(url, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
   const auth = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+  const correlationId = requestIdFor(request);
+  void logEdgeEvent(admin, request, { eventType: 'AUTH_OTP_REQUEST_STARTED', action, requestId: correlationId, metadata: { flow } });
   const limitAction = action === 'verify' ? 'otp_verify' : flow === 'login' ? 'otp_login' : 'otp_signup';
   // Allow up to eight OTP sends/resends per email and IP in the window, while
   // keeping verification attempts at five to limit brute-force guessing.
@@ -136,7 +139,7 @@ Deno.serve(async (request) => {
     }));
     if (attempts.some((allowed) => !allowed)) return json({ error: 'Too many requests. Please wait before trying again.' }, 429);
   } catch (error) {
-    console.error('auth-otp rate-limit failure', { action, flow, code: errorCode(error) });
+    void logEdgeEvent(admin, request, { eventType: 'AUTH_OTP_RATE_LIMIT_FAILED', action, requestId: correlationId, error, errorCode: errorCode(error), httpStatus: 503, metadata: { flow } });
     return json({ error: 'Request could not be completed right now. Please try again.' }, 503);
   }
 
@@ -152,7 +155,7 @@ Deno.serve(async (request) => {
       const { data, error } = await auth.auth.signUp({ email, password, options: { data: { display_name: displayName, language } } });
       const duplicate = error?.message?.toLowerCase().includes('already') || data.user?.identities?.length === 0;
       if (error || !data.user || duplicate) {
-        if (error) console.error('auth-otp signup rejected', { code: errorCode(error) });
+        void logEdgeEvent(admin, request, { eventType: 'SIGNUP_FAILED', action, requestId: correlationId, error, errorCode: errorCode(error), httpStatus: 400, metadata: { flow, duplicate } });
         return json({ error: signupErrorMessage(error, duplicate) }, 400);
       }
 
@@ -161,11 +164,12 @@ Deno.serve(async (request) => {
       if (data.session) {
         const { error: otpError } = await auth.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
         if (otpError) {
-          console.error('auth-otp signup email rejected', { code: errorCode(otpError) });
+          void logEdgeEvent(admin, request, { eventType: 'OTP_REQUEST_FAILED', action, requestId: correlationId, error: otpError, errorCode: errorCode(otpError), httpStatus: 503, metadata: { flow } });
           return json({ error: otpSendErrorMessage(otpError) }, 503);
         }
       }
       const challengeId = await createChallenge(admin, emailHash, 'signup', ipHash);
+      void logEdgeEvent(admin, request, { eventType: 'OTP_REQUEST_SUCCESS', action, requestId: correlationId, metadata: { flow } });
       return json({ ok: true, challengeId });
     }
 
@@ -176,14 +180,18 @@ Deno.serve(async (request) => {
       // This is the password gate. The returned session stays inside this
       // non-persisted server-side client and is never sent to the browser.
       const { data: passwordResult, error: passwordError } = await auth.auth.signInWithPassword({ email, password });
-      if (passwordError || !passwordResult.user) return invalidCredentials();
+      if (passwordError || !passwordResult.user) {
+        void logEdgeEvent(admin, request, { eventType: 'PASSWORD_SIGNIN_FAILED', action, requestId: correlationId, error: passwordError, errorCode: errorCode(passwordError), httpStatus: 401, metadata: { flow } });
+        return invalidCredentials();
+      }
 
       const { error: otpError } = await auth.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
       if (otpError) {
-        console.error('auth-otp login email rejected', { code: errorCode(otpError) });
+        void logEdgeEvent(admin, request, { eventType: 'OTP_REQUEST_FAILED', action, requestId: correlationId, error: otpError, errorCode: errorCode(otpError), httpStatus: 503, metadata: { flow } });
         return json({ error: otpSendErrorMessage(otpError) }, 503);
       }
       const challengeId = await createChallenge(admin, emailHash, 'login', ipHash);
+      void logEdgeEvent(admin, request, { eventType: 'OTP_REQUEST_SUCCESS', action, requestId: correlationId, metadata: { flow } });
       return json({ ok: true, challengeId });
     }
 
@@ -197,9 +205,10 @@ Deno.serve(async (request) => {
         ? await auth.auth.resend({ type: 'signup', email })
         : await auth.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
       if (resendResult.error) {
-        console.error('auth-otp resend rejected', { code: errorCode(resendResult.error) });
+        void logEdgeEvent(admin, request, { eventType: 'OTP_RESEND_FAILED', action, requestId: correlationId, error: resendResult.error, errorCode: errorCode(resendResult.error), httpStatus: 503, metadata: { flow } });
         return json({ error: otpSendErrorMessage(resendResult.error) }, 503);
       }
+      void logEdgeEvent(admin, request, { eventType: 'OTP_RESEND_SUCCESS', action, requestId: correlationId, metadata: { flow } });
       return json({ ok: true, challengeId });
     }
 
@@ -212,17 +221,24 @@ Deno.serve(async (request) => {
       const password = typeof body.password === 'string' ? body.password : '';
       if (!password) return invalidCredentials();
       const { data: passwordResult, error: passwordError } = await auth.auth.signInWithPassword({ email, password });
-      if (passwordError || !passwordResult.user) return invalidCredentials();
+      if (passwordError || !passwordResult.user) {
+        void logEdgeEvent(admin, request, { eventType: 'PASSWORD_SIGNIN_FAILED', action, requestId: correlationId, error: passwordError, errorCode: errorCode(passwordError), httpStatus: 401, metadata: { flow, stage: 'otp_verify' } });
+        return invalidCredentials();
+      }
     }
 
     const { data, error } = await auth.auth.verifyOtp({ email, token, type: 'email' });
-    if (error || !data.session) return json({ error: 'That code is invalid or has expired.' }, 400);
+    if (error || !data.session) {
+      void logEdgeEvent(admin, request, { eventType: 'OTP_VERIFY_FAILED', action, requestId: correlationId, error, errorCode: errorCode(error), httpStatus: 400, metadata: { flow } });
+      return json({ error: 'That code is invalid or has expired.' }, 400);
+    }
     if (!(await consumeChallenge(admin, challengeId, emailHash, flow))) {
       return json({ error: 'This verification request has expired. Start again and request a new code.' }, 400);
     }
+    void logEdgeEvent(admin, request, { eventType: 'OTP_VERIFY_SUCCESS', action, requestId: correlationId, metadata: { flow } });
     return json({ session: data.session });
   } catch (error) {
-    console.error('auth-otp request failure', { action, flow, code: errorCode(error) });
+    void logEdgeEvent(admin, request, { eventType: 'AUTH_OTP_REQUEST_FAILED', action, requestId: correlationId, error, errorCode: errorCode(error), httpStatus: 503, metadata: { flow } });
     return json({ error: 'Request could not be completed right now. Please try again.' }, 503);
   }
 });

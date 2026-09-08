@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import type { AppRole, LanguageCode } from '@/types';
 import { supabase } from '@/lib/supabase';
+import { errorLogger } from '@/services/errorLogger';
 
 export type OtpFlow = 'signup' | 'login';
 
@@ -76,7 +77,13 @@ async function edgeError(error: unknown, fallback: string): Promise<Error> {
 
 async function invokeOtp(payload: Record<string, unknown>): Promise<OtpSessionResponse> {
   if (!supabase) throw new Error('Supabase is not configured.');
-  const { data, error } = await supabase.functions.invoke<OtpSessionResponse>('auth-otp', { body: payload });
+  const requestId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `auth-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const { data, error } = await supabase.functions.invoke<OtpSessionResponse>('auth-otp', {
+    body: { ...payload, requestId },
+    headers: { 'x-request-id': requestId },
+  });
   if (error) throw await edgeError(error, 'Unable to complete this request right now.');
   if (data?.error) throw new Error(data.error);
   return data ?? {};
@@ -88,25 +95,46 @@ export async function requestEmailOtp(
   email: string,
   options?: { password?: string; displayName?: string; language?: LanguageCode },
 ): Promise<string> {
-  const result = await invokeOtp({ action: flow, email, password: options?.password, displayName: options?.displayName, language: options?.language });
-  if (!result.challengeId) throw new Error('Unable to start verification. Please try again.');
-  return result.challengeId;
+  void errorLogger.captureEvent('OTP_REQUEST_STARTED', { feature: 'auth', action: flow, metadata: { flow } });
+  try {
+    const result = await invokeOtp({ action: flow, email, password: options?.password, displayName: options?.displayName, language: options?.language });
+    if (!result.challengeId) throw new Error('Unable to start verification. Please try again.');
+    void errorLogger.captureEvent('OTP_REQUEST_SUCCESS', { feature: 'auth', action: flow, metadata: { flow } });
+    return result.challengeId;
+  } catch (error) {
+    void errorLogger.captureAuthError(error, flow, { eventType: 'OTP_REQUEST_FAILED', metadata: { flow } });
+    throw error;
+  }
 }
 
 /** Requests another OTP without storing or generating a code in the browser. */
 export async function resendEmailOtp(flow: OtpFlow, email: string, challengeId: string): Promise<void> {
-  await invokeOtp({ action: 'resend', flow, email, challengeId });
+  void errorLogger.captureEvent('OTP_RESEND_STARTED', { feature: 'auth', action: 'resend', metadata: { flow } });
+  try {
+    await invokeOtp({ action: 'resend', flow, email, challengeId });
+    void errorLogger.captureEvent('OTP_RESEND_SUCCESS', { feature: 'auth', action: 'resend', metadata: { flow } });
+  } catch (error) {
+    void errorLogger.captureAuthError(error, 'resend', { eventType: 'OTP_RESEND_FAILED', metadata: { flow } });
+    throw error;
+  }
 }
 
 /** Verifies the Supabase OTP server-side and installs only the returned Auth session. */
 export async function verifyEmailOtp(flow: OtpFlow, email: string, token: string, challengeId: string, password?: string): Promise<void> {
-  const result = await invokeOtp({ action: 'verify', flow, email, token, challengeId, password });
-  if (!result.session?.access_token || !result.session.refresh_token) {
-    throw new Error('That code could not be verified. Request a new code and try again.');
+  void errorLogger.captureEvent('OTP_VERIFY_STARTED', { feature: 'auth', action: 'verify', metadata: { flow } });
+  try {
+    const result = await invokeOtp({ action: 'verify', flow, email, token, challengeId, password });
+    if (!result.session?.access_token || !result.session.refresh_token) {
+      throw new Error('That code could not be verified. Request a new code and try again.');
+    }
+    if (!supabase) throw new Error('Supabase is not configured.');
+    const { error } = await supabase.auth.setSession(result.session);
+    if (error) throw error;
+    void errorLogger.captureEvent('OTP_VERIFY_SUCCESS', { feature: 'auth', action: 'verify', metadata: { flow } });
+  } catch (error) {
+    void errorLogger.captureAuthError(error, 'verify', { eventType: 'OTP_VERIFY_FAILED', metadata: { flow } });
+    throw error;
   }
-  if (!supabase) throw new Error('Supabase is not configured.');
-  const { error } = await supabase.auth.setSession(result.session);
-  if (error) throw error;
 }
 
 export function authRedirectUrl(path = '/'): string {
@@ -117,27 +145,47 @@ export function authRedirectUrl(path = '/'): string {
 
 export async function signInWithGoogle() {
   if (!supabase) throw new Error('Supabase is not configured.');
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo: authRedirectUrl('/') },
-  });
-  if (error) throw error;
+  void errorLogger.captureEvent('OAUTH_SIGNIN_STARTED', { feature: 'auth', action: 'google' });
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: authRedirectUrl('/') },
+    });
+    if (error) throw error;
+  } catch (error) {
+    void errorLogger.captureAuthError(error, 'google', { eventType: 'OAUTH_SIGNIN_FAILED' });
+    throw error;
+  }
 }
 
 export async function signUp(username: string, password: string, displayName = '', role?: AppRole) {
   if (!supabase) throw new Error('Supabase is not configured.');
-  const metadata = { display_name: displayName.trim(), ...(role ? { requested_role: role } : {}) };
-  const { data, error } = await supabase.auth.signUp({ email: authEmailForUsername(username), password, options: { data: { ...metadata, username: username.trim().toLowerCase() } } });
-  if (error) throw error;
-  if (!data.user) throw new Error('No account was returned.');
-  return { user: data.user, session: data.session };
+  void errorLogger.captureEvent('SIGNUP_STARTED', { feature: 'auth', action: 'password', metadata: { role: role ?? 'unknown' } });
+  try {
+    const metadata = { display_name: displayName.trim(), ...(role ? { requested_role: role } : {}) };
+    const { data, error } = await supabase.auth.signUp({ email: authEmailForUsername(username), password, options: { data: { ...metadata, username: username.trim().toLowerCase() } } });
+    if (error) throw error;
+    if (!data.user) throw new Error('No account was returned.');
+    void errorLogger.captureEvent('SIGNUP_SUCCESS', { feature: 'auth', action: 'password', metadata: { role: role ?? 'unknown' } });
+    return { user: data.user, session: data.session };
+  } catch (error) {
+    void errorLogger.captureAuthError(error, 'password', { eventType: 'SIGNUP_FAILED' });
+    throw error;
+  }
 }
 
 export async function signIn(username: string, password: string) {
   if (!supabase) throw new Error('Supabase is not configured.');
-  const { data, error } = await supabase.auth.signInWithPassword({ email: authEmailForUsername(username), password });
-  if (error) throw error;
-  return data;
+  void errorLogger.captureEvent('PASSWORD_SIGNIN_STARTED', { feature: 'auth', action: 'password' });
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({ email: authEmailForUsername(username), password });
+    if (error) throw error;
+    void errorLogger.captureEvent('PASSWORD_SIGNIN_SUCCESS', { feature: 'auth', action: 'password' });
+    return data;
+  } catch (error) {
+    void errorLogger.captureAuthError(error, 'password', { eventType: 'PASSWORD_SIGNIN_FAILED' });
+    throw error;
+  }
 }
 
 export async function resetPasswordForEmail(email: string) {
@@ -156,8 +204,14 @@ export async function updatePassword(password: string) {
 
 export async function signOut() {
   if (supabase) {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      void errorLogger.captureEvent('SIGNOUT_SUCCESS', { feature: 'auth', action: 'signout' });
+    } catch (error) {
+      void errorLogger.captureAuthError(error, 'signout', { eventType: 'SIGNOUT_FAILED' });
+      throw error;
+    }
   }
 }
 
@@ -170,13 +224,30 @@ export async function currentSession() {
 
 export async function currentAuthContext(): Promise<AuthContext | null> {
   if (!supabase) return null;
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error) throw error;
-  if (!user) return null;
-  const { data: profile, error: profileError } = await supabase.from('profiles').select('role, display_name, role_selected_at, language').eq('id', user.id).maybeSingle();
-  if (profileError) throw profileError;
-  if (!profile) return null;
-  return { userId: user.id, role: profile.role as AppRole, displayName: profile.display_name || user.email || 'User', needsRoleSelection: !profile.role_selected_at, language: profile.language as LanguageCode };
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error) throw error;
+    if (!user) return null;
+    const { data: profile, error: profileError } = await supabase.from('profiles').select('role, display_name, role_selected_at, language').eq('id', user.id).maybeSingle();
+    if (profileError) throw profileError;
+    if (!profile) return null;
+    return { userId: user.id, role: profile.role as AppRole, displayName: profile.display_name || user.email || 'User', needsRoleSelection: !profile.role_selected_at, language: profile.language as LanguageCode };
+  } catch (error) {
+    void errorLogger.captureRequestError(error, { feature: 'auth', eventType: 'SESSION_RESTORE_FAILED', action: 'restore_session' });
+    throw error;
+  }
+}
+
+export async function isCurrentUserAdmin(): Promise<boolean> {
+  if (!supabase) return false;
+  try {
+    const { data, error } = await supabase.rpc('is_my_system_admin');
+    if (error) throw error;
+    return data === true;
+  } catch (error) {
+    void errorLogger.captureRequestError(error, { feature: 'admin', eventType: 'ADMIN_AUTH_CHECK_FAILED', action: 'check_admin' });
+    return false;
+  }
 }
 
 export async function setMyLanguage(language: LanguageCode): Promise<void> {

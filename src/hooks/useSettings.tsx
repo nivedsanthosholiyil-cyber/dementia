@@ -22,6 +22,7 @@ import { ensureCurrentUserPatient, listAuthorizedPatients } from '@/services/pat
 import { supabase } from '@/lib/supabase';
 import { inspectSupabase } from '@/lib/supabaseDiagnostics';
 import { clearGuestData, startGuestMode } from '@/services/guestService';
+import { errorLogger } from '@/services/errorLogger';
 
 const KEY = 'mc:settings';
 
@@ -101,7 +102,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         return { ...s, authenticated: true, guestMode: false, onboarded: true, needsRoleSelection: context.needsRoleSelection, role: context.role, language: context.language || s.language, userName: context.displayName, caregiverName: context.role === 'caregiver' ? context.displayName : s.caregiverName, activePatientId: active?.id ?? s.activePatientId, patientName: active?.name ?? s.patientName, activeProfile: active ? { id: active.id, patientName: active.name, caregiverName: context.role === 'caregiver' ? context.displayName : s.caregiverName, role: context.role } : s.activeProfile };
       });
       return true;
-    } catch {
+    } catch (error) {
+      void errorLogger.captureRequestError(error, { feature: 'auth', eventType: 'AUTH_CONTEXT_HYDRATION_FAILED', action: 'hydrate_auth' });
       if (isLive() && syncId === authSyncId.current) setSettings((s) => ({ ...s, authenticated: false }));
       return false;
     } finally {
