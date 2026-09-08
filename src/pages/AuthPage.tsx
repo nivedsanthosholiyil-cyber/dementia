@@ -19,7 +19,7 @@ type AuthMode = 'sign-in' | 'sign-up';
 export function AuthPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { settings, setVoiceEnabled, setAccessibility, enterGuest } = useSettings();
+  const { settings, setVoiceEnabled, setAccessibility, enterGuest, refreshAuth } = useSettings();
   const [mode, setMode] = useState<AuthMode>('sign-in');
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
@@ -70,11 +70,12 @@ export function AuthPage() {
       if (mode === 'sign-up') {
         const result = await signUp(normalizedUsername, password, name || normalizedUsername);
         if (!result.session) throw new Error('Disable Supabase email confirmation for username-only hackathon mode.');
-        navigate('/', { replace: true });
+        if (!await refreshAuth()) throw new Error('Your account was created, but its profile could not be loaded. Please try again.');
       } else {
         await signIn(normalizedUsername, password);
-        navigate('/', { replace: true });
+        if (!await refreshAuth()) throw new Error('Your sign-in succeeded, but your account profile could not be loaded. Please try again.');
       }
+      navigate('/', { replace: true });
     } catch (reason) {
       setError(authErrorMessage(reason, mode === 'sign-up' ? 'Unable to create your account.' : 'Unable to sign in.'));
     } finally {

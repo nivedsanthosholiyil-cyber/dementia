@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -58,6 +59,7 @@ interface SettingsContextValue {
   logout: () => Promise<void>;
   enterGuest: () => Promise<void>;
   exitGuest: (clearData: boolean) => Promise<void>;
+  refreshAuth: () => Promise<boolean>;
   authReady: boolean;
 }
 
@@ -75,31 +77,44 @@ function load(): AppSettings {
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(load);
   const [authReady, setAuthReady] = useState(!supabase);
+  const authSyncId = useRef(0);
+
+  const hydrateAuth = async (isLive: () => boolean = () => true): Promise<boolean> => {
+    if (!supabase) return false;
+    const syncId = ++authSyncId.current;
+    setAuthReady(false);
+    try {
+      const context = await currentAuthContext();
+      if (!isLive() || syncId !== authSyncId.current) return false;
+      if (!context) {
+        setSettings((s) => ({ ...s, authenticated: false }));
+        return false;
+      }
+      let patients = await listAuthorizedPatients();
+      if (context.role === 'patient' && !context.needsRoleSelection && patients.length === 0) {
+        const patient = await ensureCurrentUserPatient(context.displayName);
+        if (patient) patients = [patient];
+      }
+      if (!isLive() || syncId !== authSyncId.current) return false;
+      setSettings((s) => {
+        const active = patients.find((patient) => patient.id === s.activePatientId) ?? patients[0];
+        return { ...s, authenticated: true, guestMode: false, onboarded: true, needsRoleSelection: context.needsRoleSelection, role: context.role, language: context.language || s.language, userName: context.displayName, caregiverName: context.role === 'caregiver' ? context.displayName : s.caregiverName, activePatientId: active?.id ?? s.activePatientId, patientName: active?.name ?? s.patientName, activeProfile: active ? { id: active.id, patientName: active.name, caregiverName: context.role === 'caregiver' ? context.displayName : s.caregiverName, role: context.role } : s.activeProfile };
+      });
+      return true;
+    } catch {
+      if (isLive() && syncId === authSyncId.current) setSettings((s) => ({ ...s, authenticated: false }));
+      return false;
+    } finally {
+      if (isLive() && syncId === authSyncId.current) setAuthReady(true);
+    }
+  };
 
   useEffect(() => {
     if (!supabase) return;
     let live = true;
     void inspectSupabase().catch(() => undefined);
-    const hydrate = async () => {
-      try {
-        const context = await currentAuthContext();
-        if (!live) return;
-        if (!context) { setSettings((s) => ({ ...s, authenticated: false })); return; }
-        let patients = await listAuthorizedPatients();
-        if (context.role === 'patient' && !context.needsRoleSelection && patients.length === 0) {
-          const patient = await ensureCurrentUserPatient(context.displayName);
-          if (patient) patients = [patient];
-        }
-        if (!live) return;
-        setSettings((s) => {
-          const active = patients.find((patient) => patient.id === s.activePatientId) ?? patients[0];
-          return { ...s, authenticated: true, guestMode: false, onboarded: true, needsRoleSelection: context.needsRoleSelection, role: context.role, language: context.language || s.language, userName: context.displayName, caregiverName: context.role === 'caregiver' ? context.displayName : s.caregiverName, activePatientId: active?.id ?? s.activePatientId, patientName: active?.name ?? s.patientName, activeProfile: active ? { id: active.id, patientName: active.name, caregiverName: context.role === 'caregiver' ? context.displayName : s.caregiverName, role: context.role } : s.activeProfile };
-        });
-      } catch { if (live) setSettings((s) => ({ ...s, authenticated: false })); }
-      finally { if (live) setAuthReady(true); }
-    };
-    void hydrate();
-    const unsubscribe = onAuthStateChange(() => { setAuthReady(false); void hydrate(); });
+    void hydrateAuth(() => live);
+    const unsubscribe = onAuthStateChange(() => { void hydrateAuth(() => live); });
     return () => { live = false; unsubscribe(); };
   }, []);
 
@@ -173,6 +188,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         if (clearData) await clearGuestData();
         setSettings((s) => ({ ...s, authenticated: false, guestMode: false, onboarded: false, activePatientId: undefined, activeProfile: undefined, patientName: '', caregiverName: '', userName: '', needsRoleSelection: false }));
       },
+      refreshAuth: () => hydrateAuth(),
       authReady,
     }),
     [settings, authReady],
