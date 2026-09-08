@@ -39,8 +39,8 @@ export function AuthPage() {
     setConfirmPassword('');
   };
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const submit = async (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
     setMessage('');
     setError('');
     const normalizedUsername = username.trim().toLowerCase();
@@ -147,7 +147,7 @@ export function AuthPage() {
                 </>}
               </>}
             </div>
-            <Button type="submit" size="lg" block disabled={busy}>{busy ? 'Please wait…' : submitLabel}</Button>
+            <Button type="button" size="lg" block disabled={busy} onClick={() => void submit()}>{busy ? 'Please wait…' : submitLabel}</Button>
           </form>
 
           <><div className="auth-divider" role="separator"><span>or try MemoryCare</span></div>
