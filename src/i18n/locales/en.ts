@@ -330,6 +330,8 @@ const en = {
     familyMembersDesc: 'Add, edit, or remove multiple people',
     accountTitle: 'Account',
     accountDesc: 'Sign out of this MemoryCare account on this device.',
+    signingOut: 'Signing out…',
+    signOut: 'Sign out',
     privacyNotice: 'Privacy: this is a local hackathon demo. Information remains in this browser unless a real backend is configured.',
     guestModeTitle: 'Guest Mode',
     guestModeBody: 'Your demo patient, people, reminders, and activity stay on this device only.',

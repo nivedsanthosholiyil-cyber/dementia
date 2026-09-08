@@ -381,7 +381,7 @@ export function Settings() {
           {!settings.guestMode && settings.authenticated && <Card variant="tint" padLg>
             <div className="stack-sm">
               <div><strong>{t('settings.accountTitle')}</strong><p className="muted">{t('settings.accountDesc')}</p></div>
-              <Button variant="ghost" block onClick={() => void signOutAccount()} disabled={logoutBusy}>{logoutBusy ? 'Signing out…' : 'Sign out'}</Button>
+              <Button variant="ghost" block onClick={() => void signOutAccount()} disabled={logoutBusy}>{logoutBusy ? t('settings.signingOut') : t('settings.signOut')}</Button>
               {accountError && <p className="banner banner--red" role="alert">{accountError}</p>}
             </div>
           </Card>}
