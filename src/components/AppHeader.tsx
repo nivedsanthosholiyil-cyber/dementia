@@ -42,7 +42,7 @@ export function AppHeader({ subtitle, readText, showBack, onBack }: AppHeaderPro
           )}
           <div>
             <div className="brand__name">{t('common.appName')}</div>
-            {(subtitle || settings.guestMode) && <div className="brand__sub">{subtitle}{settings.guestMode && <span className="guest-badge">Guest Mode</span>}</div>}
+            {(subtitle || settings.guestMode) && <div className="brand__sub">{subtitle}{settings.guestMode && <span className="guest-badge">{t('common.guestMode')}</span>}</div>}
           </div>
         </div>
 

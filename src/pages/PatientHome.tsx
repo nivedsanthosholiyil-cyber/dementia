@@ -48,7 +48,7 @@ export function PatientHome() {
             </span>
           </div>
           <h1 id="patient-home-title">{greeting}, {settings.patientName}</h1>
-          <p>Let&apos;s take today one gentle step at a time.</p>
+          <p>{t('home.intro')}</p>
           <VoiceButton text={planText} label={t('home.hearPlan')} />
         </section>
 
@@ -56,14 +56,14 @@ export function PatientHome() {
 
         {settings.guestMode && (
           <div className="state-banner state-banner--success" role="status">
-            <strong>Guest Mode</strong>
-            <span>Your changes are saved only on this device.</span>
+            <strong>{t('common.guestMode')}</strong>
+            <span>{t('home.guestSaved')}</span>
           </div>
         )}
 
         <section className="next-step" aria-labelledby="next-step-title">
           <div className="next-step__content">
-            <div className="next-step__kicker"><span className="next-step__dot" /> Your next step</div>
+            <div className="next-step__kicker"><span className="next-step__dot" /> {t('home.nextStep')}</div>
             <h2 id="next-step-title">{nextReminder?.title ?? t('home.startGame')}</h2>
             <p>
               {nextReminder
@@ -90,22 +90,22 @@ export function PatientHome() {
             <h2 id="today-title">{t('home.todaysRoutine')}</h2>
             <p>{completedCount} / {reminders.length} {t('home.ofDone')}</p>
           </div>
-          <div className="day-progress" aria-label={`${activityPercent}% of today's plan complete`}>
+          <div className="day-progress" aria-label={`${activityPercent}${t('home.todayPlanPercent')} complete`}>
             <div className="day-progress__track">
               <div className="day-progress__fill" style={{ width: `${activityPercent}%` }} />
             </div>
-            <p className="text-muted">{activityPercent}% of today&apos;s plan</p>
+            <p className="text-muted">{activityPercent}{t('home.todayPlanPercent')}</p>
           </div>
 
           {remindersLoading && (
             <div className="empty-state" role="status">
-              <strong>Loading your plan</strong>
-              <span className="text-muted">Your reminders will appear here.</span>
+              <strong>{t('home.loadingPlan')}</strong>
+              <span className="text-muted">{t('home.loadingPlanBody')}</span>
             </div>
           )}
           {remindersError && (
             <div className="state-banner state-banner--error" role="alert">
-              <strong>We couldn&apos;t load your reminders.</strong>
+              <strong>{t('home.remindersError')}</strong>
               <span>{remindersError}</span>
             </div>
           )}
@@ -146,9 +146,9 @@ export function PatientHome() {
             <span>{t('reminders.title')}</span>
           </button>
         </section>
-        <section className="home-reassurance" aria-label="Today at a glance">
+        <section className="home-reassurance" aria-label={t('home.todayGlance')}>
           <div className="home-reassurance__icon"><Icon name="heart" size={22} /></div>
-          <div><strong>You&apos;re doing well.</strong><p>{activityPercent}% of today&apos;s plan is complete. There is no rush.</p></div>
+          <div><strong>{t('home.doingWell')}</strong><p>{t('home.noRush', { n: activityPercent })}</p></div>
         </section>
       </main>
     </>

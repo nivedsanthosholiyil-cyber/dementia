@@ -22,14 +22,14 @@ const TITLE_KEY: Record<GameType, string> = {
   'picture-pairs': 'pairs.title',
   'pattern-recall': 'pattern.title',
   'daily-routine': 'routine.title',
-  'who-is-this-person': 'Who Is This Person?',
+  'who-is-this-person': 'familiar.title',
 };
 
 const INSTRUCTION_KEY: Record<GameType, string> = {
   'picture-pairs': 'pairs.instruction',
   'pattern-recall': 'pattern.watchInstruction',
   'daily-routine': 'routine.instruction',
-  'who-is-this-person': 'Choose the name of the familiar person in the photo.',
+  'who-is-this-person': 'familiar.question',
 };
 
 export function GamePlay() {

@@ -4,11 +4,11 @@ import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
 import { PasswordField } from '@/components/PasswordField';
 import { useSettings } from '@/hooks/useSettings';
+import { useI18n } from '@/i18n';
 import {
   authErrorMessage,
   isStrongEnoughPassword,
   isValidUsername,
-  PASSWORD_REQUIREMENTS,
   signInWithGoogle,
   signIn,
   signUp,
@@ -20,6 +20,7 @@ export function AuthPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { settings, setVoiceEnabled, setAccessibility, enterGuest, refreshAuth } = useSettings();
+  const { t } = useI18n();
   const [mode, setMode] = useState<AuthMode>('sign-in');
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
@@ -45,24 +46,24 @@ export function AuthPage() {
     setError('');
     const normalizedUsername = username.trim().toLowerCase();
     if (!isValidUsername(normalizedUsername)) {
-      setError('Username must be 3–32 characters using only letters, numbers, or underscores.');
+      setError(t('auth.invalidUsername'));
       return;
     }
     if (mode === 'sign-up') {
       if (!name.trim()) {
-        setError('Enter your name.');
+        setError(t('auth.enterName'));
         return;
       }
       if (!isStrongEnoughPassword(password)) {
-        setError(PASSWORD_REQUIREMENTS);
+        setError(t('auth.passwordRequirements'));
         return;
       }
       if (password !== confirmPassword) {
-        setError('Passwords do not match.');
+        setError(t('auth.passwordsMismatch'));
         return;
       }
     } else if (!password) {
-      setError('Enter your password.');
+      setError(t('auth.enterPassword'));
       return;
     }
     setBusy(true);
@@ -108,8 +109,8 @@ export function AuthPage() {
     }
   };
 
-  const heading = mode === 'sign-up' ? 'Create your account' : 'Sign in on this device.';
-  const submitLabel = mode === 'sign-up' ? 'Create account' : 'Continue';
+  const heading = mode === 'sign-up' ? t('auth.signUpTitle') : t('auth.signInTitle');
+  const submitLabel = mode === 'sign-up' ? t('auth.createAccount') : t('common.continue');
 
   return (
     <>
@@ -119,60 +120,60 @@ export function AuthPage() {
           <div className="auth-hero__icon" aria-hidden="true">🧠</div>
           <p className="eyebrow">MemoryCare</p>
           <h1 id="auth-title">{heading}</h1>
-          <p className="page-sub">A calm, secure place for familiar faces and daily support.</p>
+          <p className="page-sub">{t('auth.subtitle')}</p>
         </section>
 
         <section className="card auth-card stack-lg" aria-label="Authentication options">
           <>
             <div className="stack-sm">
-              <h2 className="card-title">Use Google</h2>
-              <p className="muted">Continue with your Google account.</p>
+              <h2 className="card-title">{t('auth.useGoogle')}</h2>
+              <p className="muted">{t('auth.continueGoogle')}</p>
               <Button type="button" size="lg" block variant="secondary" onClick={() => void googleLogin()} disabled={busy || googleLoading}>
-                {googleLoading ? 'Opening Google…' : 'Continue with Google'}
+                {googleLoading ? t('auth.openingGoogle') : t('auth.continueGoogle')}
               </Button>
             </div>
-            <div className="auth-divider" role="separator"><span>or use username</span></div>
+            <div className="auth-divider" role="separator"><span>{t('auth.usernameOr')}</span></div>
           </>
 
           <form className="stack" onSubmit={(event) => void submit(event)} noValidate>
             <div className="stack-sm">
-              <h2 className="card-title">Username and password</h2>
-              {mode === 'sign-up' && <div className="field"><label className="field__label" htmlFor="auth-name">Your name</label><input id="auth-name" className="input" value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" /></div>}
-              <div className="field"><label className="field__label" htmlFor="auth-username">Username</label><input id="auth-username" className="input" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoCapitalize="none" autoFocus /></div>
+              <h2 className="card-title">{t('auth.usernamePassword')}</h2>
+              {mode === 'sign-up' && <div className="field"><label className="field__label" htmlFor="auth-name">{t('auth.name')}</label><input id="auth-name" className="input" value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" /></div>}
+              <div className="field"><label className="field__label" htmlFor="auth-username">{t('auth.username')}</label><input id="auth-username" className="input" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoCapitalize="none" autoFocus /></div>
               {(mode === 'sign-up' || mode === 'sign-in') && <>
-                <PasswordField id="auth-password" label="Password" value={password} onChange={setPassword} autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'} />
+                <PasswordField id="auth-password" label={t('auth.password')} value={password} onChange={setPassword} autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'} />
                 {mode === 'sign-up' && <>
-                  <PasswordField id="auth-confirm-password" label="Confirm password" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" />
-                  <p className="muted">{PASSWORD_REQUIREMENTS}</p>
+                  <PasswordField id="auth-confirm-password" label={t('auth.confirmPassword')} value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" />
+                  <p className="muted">{t('auth.passwordRequirements')}</p>
                 </>}
               </>}
             </div>
-            <Button type="button" size="lg" block disabled={busy} onClick={() => void submit()}>{busy ? 'Please wait…' : submitLabel}</Button>
+            <Button type="submit" size="lg" block disabled={busy}>{busy ? t('auth.pleaseWait') : submitLabel}</Button>
           </form>
 
-          <><div className="auth-divider" role="separator"><span>or try MemoryCare</span></div>
+          <><div className="auth-divider" role="separator"><span>{t('auth.tryMemoryCare')}</span></div>
             <div className="stack-sm">
               <Button type="button" size="lg" block variant="ghost" onClick={() => void guestLogin()} disabled={busy || googleLoading || guestLoading}>
-                {guestLoading ? 'Opening Guest Mode…' : 'Continue as Guest'}
+                {guestLoading ? t('auth.openingGuest') : t('auth.guest')}
               </Button>
-              <p className="muted text-center">Try MemoryCare without an account. Your demo data stays on this device.</p>
+              <p className="muted text-center">{t('auth.guestBody')}</p>
             </div></>
 
           {error && <p className="banner banner--red" role="alert">{error}</p>}
           {message && <p className="banner banner--green" role="status" aria-live="polite">{message}</p>}
 
           <div className="auth-links">
-            {mode === 'sign-in' && <p className="muted">New to MemoryCare? <button type="button" className="auth-link" onClick={() => switchMode('sign-up')}>Create account</button></p>}
-            {mode === 'sign-up' && <p className="muted">Already have an account? <button type="button" className="auth-link" onClick={() => switchMode('sign-in')}>Sign In</button></p>}
+            {mode === 'sign-in' && <p className="muted">{t('auth.newHere')} <button type="button" className="auth-link" onClick={() => switchMode('sign-up')}>{t('auth.createAccount')}</button></p>}
+            {mode === 'sign-up' && <p className="muted">{t('auth.alreadyHave')} <button type="button" className="auth-link" onClick={() => switchMode('sign-in')}>{t('auth.signIn')}</button></p>}
           </div>
         </section>
 
         <section className="auth-preferences card stack-sm" aria-label="Accessibility preferences">
-          <p className="eyebrow">Make it easier to use</p>
-          <div className="auth-preferences__row"><span>Voice guidance</span><button type="button" className="auth-preference" aria-pressed={settings.voiceEnabled} onClick={() => setVoiceEnabled(!settings.voiceEnabled)}>{settings.voiceEnabled ? 'On' : 'Off'}</button></div>
-          <div className="auth-preferences__row"><span>Large text</span><button type="button" className="auth-preference" aria-pressed={settings.accessibility.largeText} onClick={() => setAccessibility({ largeText: !settings.accessibility.largeText })}>{settings.accessibility.largeText ? 'On' : 'Off'}</button></div>
+          <p className="eyebrow">{t('auth.makeEasier')}</p>
+          <div className="auth-preferences__row"><span>{t('auth.voiceGuidance')}</span><button type="button" className="auth-preference" aria-pressed={settings.voiceEnabled} onClick={() => setVoiceEnabled(!settings.voiceEnabled)}>{settings.voiceEnabled ? t('auth.on') : t('auth.off')}</button></div>
+          <div className="auth-preferences__row"><span>{t('auth.largeText')}</span><button type="button" className="auth-preference" aria-pressed={settings.accessibility.largeText} onClick={() => setAccessibility({ largeText: !settings.accessibility.largeText })}>{settings.accessibility.largeText ? t('auth.on') : t('auth.off')}</button></div>
         </section>
-        <p className="disclaimer">Your password is handled by Supabase Auth. MemoryCare never stores it.</p>
+        <p className="disclaimer">{t('auth.passwordHandled')}</p>
       </main>
     </>
   );

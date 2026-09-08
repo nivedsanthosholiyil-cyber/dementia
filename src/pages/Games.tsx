@@ -36,13 +36,13 @@ export function Games() {
         <div className="activity-feature">
           <div className="activity-feature__art"><Icon name="sparkle" size={30} /></div>
           <div className="activity-feature__body">
-            <span className="activity-card__eyebrow">Recommended for this morning · 3 minutes</span>
-            <h2>Memory Match</h2>
-            <p>Take your time finding two pictures that belong together.</p>
+            <span className="activity-card__eyebrow">{t('games.recommended')}</span>
+            <h2>{t('games.memoryMatch')}</h2>
+            <p>{t('games.memoryMatchDesc')}</p>
           </div>
         </div>
 
-        <div className="section-heading"><h2>Choose something familiar</h2><span>Take your time</span></div>
+        <div className="section-heading"><h2>{t('games.chooseFamiliar')}</h2><span>{t('games.takeYourTime')}</span></div>
 
         <GameCard
           title={t('games.picturePairs')}
@@ -52,7 +52,7 @@ export function Games() {
           onPlay={() => navigate('/games/picture-pairs')}
           onHear={() => say(`${t('games.picturePairs')}. ${t('games.picturePairsDesc')}`)}
         />
-        <GameCard title="Familiar Faces" description="Recognize people who matter to you, one face at a time." toneKey="calm" minutes="2–4" onPlay={() => navigate('/games/who-is-this-person')} onHear={() => say('Familiar Faces. Recognize people who matter to you, one face at a time.')} />
+        <GameCard title={t('games.familiarFaces')} description={t('games.familiarFacesDesc')} toneKey="calm" minutes="2–4" onPlay={() => navigate('/games/who-is-this-person')} onHear={() => say(`${t('games.familiarFaces')}. ${t('games.familiarFacesDesc')}`)} />
         <GameCard
           title={t('games.patternRecall')}
           description={t('games.patternRecallDesc')}

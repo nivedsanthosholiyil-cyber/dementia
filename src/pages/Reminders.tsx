@@ -57,9 +57,9 @@ export function Reminders() {
     setDeleting(r);
   };
   const requestNotifications = async () => {
-    if (!('Notification' in window)) return showToast('Notifications are not supported in this browser.', 'ℹ️');
+    if (!('Notification' in window)) return showToast(t('reminders.notificationsUnsupported'), 'ℹ️');
     const permission = await Notification.requestPermission();
-    showToast(permission === 'granted' ? 'Reminder notifications enabled.' : 'Notification permission was not granted.', permission === 'granted' ? '🔔' : 'ℹ️');
+    showToast(permission === 'granted' ? t('reminders.notificationsEnabled') : t('reminders.notificationsDenied'), permission === 'granted' ? '🔔' : 'ℹ️');
   };
 
   return (
@@ -76,8 +76,8 @@ export function Reminders() {
           </div>
           <VoiceButton text={readAll} label={t('reminders.readAloud')} />
         </div>
-        <p className="muted" style={{ fontSize: 'var(--fs-caption)' }}>Browser reminders need permission and may not fire when this app is fully closed. They are not guaranteed alarms.</p>
-        <Button variant="ghost" icon="bell" block onClick={requestNotifications}>Enable browser notifications</Button>
+        <p className="muted" style={{ fontSize: 'var(--fs-caption)' }}>{t('reminders.browserNotice')}</p>
+        <Button variant="ghost" icon="bell" block onClick={requestNotifications}>{t('reminders.enableNotifications')}</Button>
         {error && <ContentState title="Reminders are unavailable" detail={error} tone="amber" action={{ label: 'Try again', onClick: () => void reload() }} />}
 
         {/* Progress */}
@@ -146,7 +146,7 @@ export function Reminders() {
       />
       <ConfirmSheet
         open={Boolean(deleting)}
-        title="Delete reminder"
+        title={t('reminders.deleteTitle')}
         message={t('reminders.deleteConfirm')}
         confirmLabel="Delete"
         danger
@@ -234,7 +234,7 @@ function ReminderSheet({
         </div>
 
         <div className="field">
-          <label className="field__label" htmlFor="r-category">Category</label>
+          <label className="field__label" htmlFor="r-category">{t('reminders.category')}</label>
           <select id="r-category" className="input" value={category} onChange={(event) => setCategory(event.target.value as Reminder['category'])}>
             {(['medicine', 'meal', 'water', 'appointment', 'exercise', 'game', 'custom'] as const).map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
@@ -302,10 +302,10 @@ function ReminderSheet({
             offText={t('common.no')}
           />
         </div>
-        {!recurring && <div className="field"><label className="field__label" htmlFor="r-date">Date</label><input id="r-date" type="date" className="input" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} /></div>}
+        {!recurring && <div className="field"><label className="field__label" htmlFor="r-date">{t('reminders.date')}</label><input id="r-date" type="date" className="input" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} /></div>}
         <div className="setting-row" style={{ border: 'none', background: 'var(--surface-container)' }}>
-          <span className="setting-row__title">Enabled</span>
-          <Toggle checked={enabled} onChange={setEnabled} label="Enabled" onText={t('settings.on')} offText={t('settings.off')} />
+          <span className="setting-row__title">{t('reminders.enabled')}</span>
+          <Toggle checked={enabled} onChange={setEnabled} label={t('reminders.enabled')} onText={t('settings.on')} offText={t('settings.off')} />
         </div>
 
         <Button

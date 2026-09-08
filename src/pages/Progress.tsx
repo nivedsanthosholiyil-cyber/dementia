@@ -28,47 +28,47 @@ export function Progress() {
   const weekly = summary?.weekly ?? [];
   const firstStep = completed === 0;
   const encouragement = firstStep
-    ? 'Every small moment counts. Start with something familiar whenever you feel ready.'
+    ? t('progress.firstStep')
     : completed === 1
-      ? 'You made time for yourself this week. That is a lovely beginning.'
-      : `You completed ${completed} activities this week. You’re keeping up with your routine.`;
+      ? t('progress.oneActivity')
+      : t('progress.playedThisWeek', { n: completed });
 
   return (
     <>
       <AppHeader subtitle={t('nav.progress')} readText={readScreen} />
       <main className="page progress-page">
         <section className="screen-intro">
-          <p className="eyebrow">A gentle look back</p>
+          <p className="eyebrow">{t('progress.gentleLookBack')}</p>
           <h1>{t('progress.title')}</h1>
           <p>{t('progress.subtitle')}</p>
         </section>
 
-        <section className="progress-celebration" aria-label="This week’s encouragement">
+        <section className="progress-celebration" aria-label={t('progress.thisWeek')}>
           <div className="progress-celebration__icon"><Icon name={firstStep ? 'leaf' : 'heart'} size={30} /></div>
           <div>
-            <p className="eyebrow">This week</p>
-            <h2>{firstStep ? 'A fresh start, at your pace.' : 'You’re doing well.'}</h2>
+            <p className="eyebrow">{t('progress.thisWeek')}</p>
+            <h2>{firstStep ? t('progress.freshStart') : t('progress.doingWell')}</h2>
             <p>{encouragement}</p>
           </div>
         </section>
 
         <section className="progress-week" aria-labelledby="week-title">
-          <div className="section-heading"><h2 id="week-title">Your week</h2><span>{activeDays} {activeDays === 1 ? 'day' : 'days'} active</span></div>
-          <div className="week-dots" role="img" aria-label={`${activeDays} active days this week`}>
+          <div className="section-heading"><h2 id="week-title">{t('progress.week')}</h2><span>{activeDays} {activeDays === 1 ? t('progress.day') : t('progress.days')} {t('progress.active')}</span></div>
+          <div className="week-dots" role="img" aria-label={`${activeDays} ${activeDays === 1 ? t('progress.day') : t('progress.days')} ${t('progress.thisWeek').toLowerCase()}`}>
             {WEEK_DAYS.map((day, index) => {
               const active = (weekly[index]?.gamesCompleted ?? 0) > 0;
               return <div className={`week-dots__day ${active ? 'is-active' : ''}`} key={`${day}-${index}`}><span aria-hidden="true">{active ? <Icon name="check" size={18} /> : ''}</span><small>{day}</small></div>;
             })}
           </div>
-          <p className="text-muted">A mark means you spent a few moments with an activity. There’s no score to chase.</p>
+          <p className="text-muted">{t('progress.activityMark')}</p>
         </section>
 
         <section className="progress-note">
           <Icon name="sparkle" size={24} />
-          <div><strong>MemoryCare notices your effort.</strong><p>Come back when it feels right. A little familiarity can go a long way.</p></div>
+          <div><strong>{t('progress.effortTitle')}</strong><p>{t('progress.effortBody')}</p></div>
         </section>
 
-        {firstStep && <Button size="lg" block icon="play" onClick={() => navigate('/games')}>Choose an activity</Button>}
+        {firstStep && <Button size="lg" block icon="play" onClick={() => navigate('/games')}>{t('progress.chooseActivity')}</Button>}
         <p className="disclaimer">{t('progress.trendDisclaimer')}</p>
       </main>
     </>
