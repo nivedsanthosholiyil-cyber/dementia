@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AppHeader } from '@/components/AppHeader';
 import { Button } from '@/components/Button';
 import { PasswordField } from '@/components/PasswordField';
+import { Icon } from '@/components/Icon';
 import { useSettings } from '@/hooks/useSettings';
 import { useI18n } from '@/i18n';
 import {
@@ -12,6 +13,7 @@ import {
   signInWithGoogle,
   signIn,
   signUp,
+  signOut,
 } from '@/services/authService';
 
 type AuthMode = 'sign-in' | 'sign-up';
@@ -71,10 +73,16 @@ export function AuthPage() {
       if (mode === 'sign-up') {
         const result = await signUp(normalizedUsername, password, name || normalizedUsername);
         if (!result.session) throw new Error('Disable Supabase email confirmation for username-only hackathon mode.');
-        if (!await refreshAuth()) throw new Error('Your account was created, but its profile could not be loaded. Please try again.');
+        if (!await refreshAuth()) {
+          await signOut().catch(() => undefined);
+          throw new Error('Your account was created, but its MemoryCare profile could not be loaded. Please ask an administrator to check the account setup.');
+        }
       } else {
         await signIn(normalizedUsername, password);
-        if (!await refreshAuth()) throw new Error('Your sign-in succeeded, but your account profile could not be loaded. Please try again.');
+        if (!await refreshAuth()) {
+          await signOut().catch(() => undefined);
+          throw new Error('Your password was accepted, but your MemoryCare profile could not be loaded. Please try again or ask an administrator to check the account.');
+        }
       }
       navigate('/', { replace: true });
     } catch (reason) {
@@ -117,7 +125,7 @@ export function AuthPage() {
       <AppHeader />
       <main className="page page--flow auth-page">
         <section className="auth-hero text-center" aria-labelledby="auth-title">
-          <div className="auth-hero__icon" aria-hidden="true">🧠</div>
+          <div className="auth-hero__icon" aria-hidden="true"><Icon name="leaf" size={34} /></div>
           <p className="eyebrow">MemoryCare</p>
           <h1 id="auth-title">{heading}</h1>
           <p className="page-sub">{t('auth.subtitle')}</p>
@@ -150,6 +158,14 @@ export function AuthPage() {
             </div>
             <Button type="submit" size="lg" block disabled={busy}>{busy ? t('auth.pleaseWait') : submitLabel}</Button>
           </form>
+
+          {mode === 'sign-in' && (
+            <aside className="auth-help" aria-label={t('auth.signInHelpTitle')}>
+              <div className="auth-help__heading"><span aria-hidden="true">?</span><strong>{t('auth.signInHelpTitle')}</strong></div>
+              <p className="muted">{t('auth.signInHelpBody')}</p>
+              <p className="muted">{t('auth.signInHelpSteps')}</p>
+            </aside>
+          )}
 
           <><div className="auth-divider" role="separator"><span>{t('auth.tryMemoryCare')}</span></div>
             <div className="stack-sm">

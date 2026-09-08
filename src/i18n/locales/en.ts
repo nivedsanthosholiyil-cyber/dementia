@@ -452,6 +452,9 @@ const en = {
     enterName: 'Enter your name.',
     passwordsMismatch: 'Passwords do not match.',
     enterPassword: 'Enter your password.',
+    signInHelpTitle: 'Having trouble signing in?',
+    signInHelpBody: 'Check the username spelling and make sure Caps Lock is off.',
+    signInHelpSteps: 'If the password still does not work, ask your MemoryCare administrator to reset the account. Guest Mode is available for a local demo.',
   },
   caregiver: {
     title: 'Family & Caregiver Hub',

@@ -397,3 +397,38 @@ html[data-theme='dark'] .emergency-secondary .btn:disabled { color: #b6cbbb; bac
   .section-heading { align-items: flex-start; flex-wrap: wrap; }
   .section-heading span { margin-left: auto; }
 }
+
+/* Final accessibility polish: keep the calm visual language readable across themes. */
+.auth-help {
+  display: grid;
+  gap: .45rem;
+  padding: .9rem 1rem;
+  border: 1px solid var(--border-card);
+  border-radius: 14px;
+  background: var(--surface-container-low);
+}
+.auth-help__heading { display: flex; align-items: center; gap: .55rem; color: var(--secondary-dark); }
+.auth-help__heading > span {
+  display: grid;
+  width: 1.55rem;
+  height: 1.55rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--secondary-container);
+  color: var(--secondary-dark);
+  font-weight: 900;
+}
+.auth-help p { font-size: .92rem; line-height: 1.45; }
+.auth-hero__icon { color: var(--on-secondary-container); }
+
+html[data-theme='dark'] .auth-help,
+html[data-theme='dark'] .auth-preferences { background: var(--surface-container-low); border-color: var(--border-card); }
+html[data-theme='dark'] .auth-help__heading,
+html[data-theme='dark'] .auth-help__heading > span { color: var(--on-secondary-container); }
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme='system'] .auth-help,
+  html[data-theme='system'] .auth-preferences { background: var(--surface-container-low); border-color: var(--border-card); }
+  html[data-theme='system'] .auth-help__heading,
+  html[data-theme='system'] .auth-help__heading > span { color: var(--on-secondary-container); }
+}

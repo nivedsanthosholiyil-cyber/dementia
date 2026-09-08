@@ -20,6 +20,7 @@ export interface AuthContext {
 }
 
 export const PASSWORD_REQUIREMENTS = 'Use at least 8 characters, including one letter and one number.';
+const AUTH_REQUEST_TIMEOUT_MS = 15000;
 
 const INTERNAL_AUTH_DOMAIN = 'users.memorycare.app';
 
@@ -56,10 +57,34 @@ export function authErrorMessage(error: unknown, fallback: string): string {
   if (normalized.includes('rate limit') || normalized.includes('too many requests')) {
     return 'Too many attempts. Please wait a few minutes and try again.';
   }
+  if (normalized.includes('supabase is not configured') || normalized.includes('missing supabase') || normalized.includes('configuration')) {
+    return 'MemoryCare sign-in is not configured on this deployment. Guest Mode is still available.';
+  }
+  if (normalized.includes('email signups are disabled') || normalized.includes('signup is disabled')) {
+    return 'New account creation is currently disabled. Ask an administrator to create your account.';
+  }
+  if (normalized.includes('profile') || normalized.includes('schema cache') || normalized.includes('database error')) {
+    return 'Your password was accepted, but your MemoryCare profile could not be loaded. Please try again, or ask an administrator to check your account.';
+  }
+  if (normalized.includes('timeout') || normalized.includes('timed out')) {
+    return 'Sign-in took too long. Check your connection and try again.';
+  }
   if (normalized.includes('fetch') || normalized.includes('network') || normalized.includes('failed to')) {
     return 'We could not reach Supabase. Check your internet connection and try again.';
   }
   return message || fallback;
+}
+
+async function withAuthTimeout<T>(operation: Promise<T>): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error('Authentication request timed out.')), AUTH_REQUEST_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([operation, timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
 
 async function edgeError(error: unknown, fallback: string): Promise<Error> {
@@ -163,7 +188,7 @@ export async function signUp(username: string, password: string, displayName = '
   void errorLogger.captureEvent('SIGNUP_STARTED', { feature: 'auth', action: 'password', metadata: { role: role ?? 'unknown' } });
   try {
     const metadata = { display_name: displayName.trim(), ...(role ? { requested_role: role } : {}) };
-    const { data, error } = await supabase.auth.signUp({ email: authEmailForUsername(username), password, options: { data: { ...metadata, username: username.trim().toLowerCase() } } });
+    const { data, error } = await withAuthTimeout(supabase.auth.signUp({ email: authEmailForUsername(username), password, options: { data: { ...metadata, username: username.trim().toLowerCase() } } }));
     if (error) throw error;
     if (!data.user) throw new Error('No account was returned.');
     void errorLogger.captureEvent('SIGNUP_SUCCESS', { feature: 'auth', action: 'password', metadata: { role: role ?? 'unknown' } });
@@ -178,7 +203,7 @@ export async function signIn(username: string, password: string) {
   if (!supabase) throw new Error('Supabase is not configured.');
   void errorLogger.captureEvent('PASSWORD_SIGNIN_STARTED', { feature: 'auth', action: 'password' });
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email: authEmailForUsername(username), password });
+    const { data, error } = await withAuthTimeout(supabase.auth.signInWithPassword({ email: authEmailForUsername(username), password }));
     if (error) throw error;
     void errorLogger.captureEvent('PASSWORD_SIGNIN_SUCCESS', { feature: 'auth', action: 'password' });
     return data;
@@ -190,9 +215,9 @@ export async function signIn(username: string, password: string) {
 
 export async function resetPasswordForEmail(email: string) {
   if (!supabase) throw new Error('Supabase is not configured.');
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+  const { error } = await withAuthTimeout(supabase.auth.resetPasswordForEmail(email, {
     redirectTo: authRedirectUrl('/reset-password'),
-  });
+  }));
   if (error) throw error;
 }
 
