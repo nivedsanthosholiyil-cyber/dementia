@@ -159,23 +159,23 @@ export function Settings() {
           {settings.guestMode && <Card className="guest-settings-card" variant="tint" padLg>
             <div className="row" style={{ gap: '0.6rem', marginBottom: '0.5rem' }}>
               <span className="mobile-row__icon" aria-hidden="true"><Icon name="leaf" size={24} /></span>
-              <div><h2 className="card-title">Guest Mode</h2><p className="muted">Your demo patient, people, reminders, and activity stay on this device only.</p></div>
+              <div><h2 className="card-title">{t('settings.guestModeTitle')}</h2><p className="muted">{t('settings.guestModeBody')}</p></div>
             </div>
             <div className="stack-sm">
-              <Button variant="primary" block onClick={() => void upgradeGuestMode()} disabled={guestBusy}>Create an account to save your data securely</Button>
-              <Button variant="ghost" block onClick={() => void leaveGuestMode(false)} disabled={guestBusy}>Exit Guest Mode</Button>
-              <Button variant="ghost" block onClick={() => setClearGuestOpen(true)} disabled={guestBusy}>Clear guest data and exit</Button>
+              <Button variant="primary" block onClick={() => void upgradeGuestMode()} disabled={guestBusy}>{t('settings.createAccount')}</Button>
+              <Button variant="ghost" block onClick={() => void leaveGuestMode(false)} disabled={guestBusy}>{t('settings.exitGuest')}</Button>
+              <Button variant="ghost" block onClick={() => setClearGuestOpen(true)} disabled={guestBusy}>{t('settings.clearGuest')}</Button>
             </div>
           </Card>}
 
           <section aria-labelledby="your-space-title">
             <div className="row-between" style={{ marginBottom: '0.5rem' }}>
-              <h2 id="your-space-title" className="section-title">Your space</h2>
+              <h2 id="your-space-title" className="section-title">{t('settings.yourSpace')}</h2>
             </div>
             <button type="button" className="link-row" onClick={() => navigate('/progress')}>
               <div className="row" style={{ gap: '0.7rem' }}>
                 <span className="mobile-row__icon" aria-hidden="true"><Icon name="heart" size={22} /></span>
-                <div><strong>Your progress</strong><div className="muted">A gentle look back at your week</div></div>
+                <div><strong>{t('settings.progressSnapshot')}</strong><div className="muted">{t('settings.progressSnapshotDesc')}</div></div>
               </div>
               <Icon name="chevron-right" size={22} />
             </button>
@@ -256,10 +256,10 @@ export function Settings() {
           </section>
 
           <Card>
-            <h2 className="card-title">Appearance</h2>
-            <p className="muted">Choose a comfortable colour mode.</p>
+            <h2 className="card-title">{t('settings.appearanceTitle')}</h2>
+            <p className="muted">{t('settings.appearanceDesc')}</p>
             <div className="grid-3" style={{ marginTop: '0.75rem' }}>
-              {(['system', 'light', 'dark'] as ThemePreference[]).map((theme) => <Button key={theme} variant={settings.theme === theme ? 'secondary' : 'ghost'} onClick={() => update({ theme })}>{theme}</Button>)}
+              {(['system', 'light', 'dark'] as ThemePreference[]).map((theme) => <Button key={theme} variant={settings.theme === theme ? 'secondary' : 'ghost'} onClick={() => update({ theme })}>{t(`settings.theme${theme[0].toUpperCase()}${theme.slice(1)}`)}</Button>)}
             </div>
           </Card>
 
@@ -323,15 +323,15 @@ export function Settings() {
           {/* Family members */}
           <Card>
             <button type="button" className="link-row" onClick={() => navigate('/profiles')}>
-              <div><strong>Patient profiles</strong><div className="muted">Create, select, edit, or delete local profiles</div></div><Icon name="chevron-right" size={20} />
+              <div><strong>{t('settings.patientProfiles')}</strong><div className="muted">{t('settings.patientProfilesDesc')}</div></div><Icon name="chevron-right" size={20} />
             </button>
             <button type="button" className="link-row" onClick={() => navigate('/people')}>
-              <div><strong>My people</strong><div className="muted">Save familiar people, photos, and notes</div></div><Icon name="chevron-right" size={20} />
+              <div><strong>{t('settings.myPeople')}</strong><div className="muted">{t('settings.myPeopleDesc')}</div></div><Icon name="chevron-right" size={20} />
             </button>
           </Card>
           <Card>
             <button type="button" className="link-row" onClick={() => navigate('/people')}>
-              <div className="row" style={{ gap: '0.6rem' }}><Icon name="users" size={22} /><div><strong>Family Members</strong><div className="muted">Add, edit, or remove multiple people</div></div></div><Icon name="chevron-right" size={20} />
+              <div className="row" style={{ gap: '0.6rem' }}><Icon name="users" size={22} /><div><strong>{t('settings.familyMembers')}</strong><div className="muted">{t('settings.familyMembersDesc')}</div></div></div><Icon name="chevron-right" size={20} />
             </button>
           </Card>
 
@@ -380,7 +380,7 @@ export function Settings() {
 
           {!settings.guestMode && settings.authenticated && <Card variant="tint" padLg>
             <div className="stack-sm">
-              <div><strong>Account</strong><p className="muted">Sign out of this MemoryCare account on this device.</p></div>
+              <div><strong>{t('settings.accountTitle')}</strong><p className="muted">{t('settings.accountDesc')}</p></div>
               <Button variant="ghost" block onClick={() => void signOutAccount()} disabled={logoutBusy}>{logoutBusy ? 'Signing out…' : 'Sign out'}</Button>
               {accountError && <p className="banner banner--red" role="alert">{accountError}</p>}
             </div>
@@ -388,7 +388,7 @@ export function Settings() {
 
 
           <p className="disclaimer">{t('common.disclaimer')}</p>
-          <p className="muted">Privacy: this is a local hackathon demo. Information remains in this browser unless a real backend is configured.</p>
+          <p className="muted">{t('settings.privacyNotice')}</p>
         </div>
       </main>
 
@@ -441,9 +441,9 @@ export function Settings() {
 
       <ConfirmSheet
         open={clearGuestOpen}
-        title="Clear Guest Mode data"
-        message="This removes the demo patient, people, reminders, and activity saved on this device."
-        confirmLabel="Clear data"
+        title={t('settings.clearGuestTitle')}
+        message={t('settings.clearGuestBody')}
+        confirmLabel={t('settings.clearData')}
         danger
         onClose={() => setClearGuestOpen(false)}
         onConfirm={() => { setClearGuestOpen(false); void leaveGuestMode(true); }}
