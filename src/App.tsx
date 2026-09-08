@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import {
   BrowserRouter,
   Routes,
@@ -15,25 +15,26 @@ import { Welcome } from '@/pages/Welcome';
 import { LanguageSelect } from '@/pages/LanguageSelect';
 import { PatientHome } from '@/pages/PatientHome';
 import { Games } from '@/pages/Games';
-import { GamePlay } from '@/pages/GamePlay';
 import { Reminders } from '@/pages/Reminders';
 import { Progress } from '@/pages/Progress';
 import { Settings } from '@/pages/Settings';
 import { Profiles } from '@/pages/Profiles';
-import { CaregiverOverview } from '@/pages/caregiver/CaregiverOverview';
-import { CaregiverProgress } from '@/pages/caregiver/CaregiverProgress';
-import { CaregiverAlerts } from '@/pages/caregiver/CaregiverAlerts';
-import { CaregiverPatient } from '@/pages/caregiver/CaregiverPatient';
-import { CaregiverSettings } from '@/pages/caregiver/CaregiverSettings';
 import { People } from '@/pages/People';
 import { Emergency } from '@/pages/Emergency';
-import { CaregiverReminders } from '@/pages/caregiver/CaregiverReminders';
-import { CaregiverEmergency } from '@/pages/caregiver/CaregiverEmergency';
 import { ChooseRole } from '@/pages/ChooseRole';
-import { ResetPassword } from '@/pages/ResetPassword';
-import { AuthPage } from '@/pages/AuthPage';
 import { isSupabaseConfigured } from '@/lib/supabase';
-import { AdminErrors } from '@/pages/AdminErrors';
+import { AuthPage } from '@/pages/AuthPage';
+
+const ResetPassword = lazy(() => import('@/pages/ResetPassword').then((module) => ({ default: module.ResetPassword })));
+const AdminErrors = lazy(() => import('@/pages/AdminErrors').then((module) => ({ default: module.AdminErrors })));
+const GamePlay = lazy(() => import('@/pages/GamePlay').then((module) => ({ default: module.GamePlay })));
+const CaregiverOverview = lazy(() => import('@/pages/caregiver/CaregiverOverview').then((module) => ({ default: module.CaregiverOverview })));
+const CaregiverProgress = lazy(() => import('@/pages/caregiver/CaregiverProgress').then((module) => ({ default: module.CaregiverProgress })));
+const CaregiverAlerts = lazy(() => import('@/pages/caregiver/CaregiverAlerts').then((module) => ({ default: module.CaregiverAlerts })));
+const CaregiverPatient = lazy(() => import('@/pages/caregiver/CaregiverPatient').then((module) => ({ default: module.CaregiverPatient })));
+const CaregiverSettings = lazy(() => import('@/pages/caregiver/CaregiverSettings').then((module) => ({ default: module.CaregiverSettings })));
+const CaregiverReminders = lazy(() => import('@/pages/caregiver/CaregiverReminders').then((module) => ({ default: module.CaregiverReminders })));
+const CaregiverEmergency = lazy(() => import('@/pages/caregiver/CaregiverEmergency').then((module) => ({ default: module.CaregiverEmergency })));
 
 /** Bridges settings.language into the i18n provider. */
 function I18nBridge({ children }: { children: ReactNode }) {
@@ -81,6 +82,10 @@ function LandingRoute() {
 }
 
 function AuthSplash() { return <main className="page page--flow"><div className="card text-center stack" role="status"><span className="medallion medallion--green" style={{ alignSelf: 'center' }}>🌿</span><h1>MemoryCare</h1><p className="text-muted">Preparing your secure space…</p></div></main>; }
+
+function RouteLoading() {
+  return <main className="page page--flow"><div className="card text-center stack" role="status" aria-live="polite"><span className="medallion medallion--green" style={{ alignSelf: 'center' }}>🌿</span><h1>MemoryCare</h1><p className="text-muted">Loading this space…</p></div></main>;
+}
 
 function AppRoutes() {
   return (
@@ -135,7 +140,9 @@ export default function App() {
       <I18nBridge>
         <ToastProvider>
           <BrowserRouter>
-            <AppRoutes />
+            <Suspense fallback={<RouteLoading />}>
+              <AppRoutes />
+            </Suspense>
           </BrowserRouter>
         </ToastProvider>
       </I18nBridge>

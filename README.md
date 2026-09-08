@@ -90,6 +90,20 @@ npm run build    # type-checks, then builds to dist/
 npm run preview  # serve the production build locally
 ```
 
+## Developer handoff and future AI preparation
+
+The current preparation work is documented in:
+
+- `docs/DEVELOPER-HANDOFF.md`
+- `docs/AI-INTEGRATION.md`
+- `docs/ADMIN-MONITORING.md`
+- `docs/MOBILE-OPTIMIZATION.md`
+- `docs/DEPLOYMENT.md`
+- `output/pdf/MemoryCare-AI-Development-Guide.pdf`
+
+Video AI and Local AI are placeholders only. Their provider-neutral TypeScript
+contracts live under `src/services/ai/`, and no placeholder call transmits data.
+
 ## What's inside
 
 - **Local profiles and access:** patient/caregiver onboarding, local demo PIN fallback,

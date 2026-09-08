@@ -294,7 +294,7 @@ html[data-theme='dark'] .home-reassurance { background: #18382b; border-color: #
 .screen-intro p { max-width: 22rem; line-height: 1.45; }
 .activity-feature { display: flex; gap: 1rem; padding: 1.1rem; border-radius: var(--mc-radius-lg); background: #e5efe8; }
 .activity-feature__art { display: grid; place-items: center; flex: 0 0 3.5rem; width: 3.5rem; height: 3.5rem; border-radius: 14px; color: var(--mc-forest-950); background: #c9dfd1; }
-.activity-feature__body { display: grid; gap: .3rem; }
+.activity-feature__body { display: grid; gap: .3rem; min-width: 0; }
 .activity-feature h2 { color: var(--mc-forest-950); font-size: 1.1rem; }
 .activity-feature p { color: var(--mc-muted); font-size: .82rem; line-height: 1.4; }
 .section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
@@ -322,6 +322,7 @@ html[data-theme='dark'] .home-reassurance { background: #18382b; border-color: #
 .person-row p { margin-top: .2rem; font-size: .78rem; }
 .person-row__actions { display: flex; justify-content: flex-end; gap: .35rem; }
 .person-row__actions .btn { min-height: 2.5rem; font-size: .8rem; }
+.emergency-hero > div:last-child, .progress-celebration > div:last-child { min-width: 0; }
 .emergency-page { gap: 1.25rem; }
 .emergency-hero { display: flex; align-items: flex-start; gap: .9rem; padding: 1.1rem; border-radius: var(--mc-radius-lg); background: #f7d8d3; color: #7b2825; }
 .emergency-hero__icon { display: grid; place-items: center; flex: 0 0 3.5rem; width: 3.5rem; height: 3.5rem; border-radius: 14px; background: #d94b45; color: #fff; }
@@ -386,4 +387,13 @@ html[data-theme='dark'] .emergency-secondary .btn:disabled { color: #b6cbbb; bac
   .next-step__content { padding-inline: 1rem; }
   .mobile-row__action span { display: none; }
   .mobile-row__action { padding-inline: .55rem; }
+  .nav-item { min-width: 0; }
+  .nav-item > span:last-child { max-width: 100%; text-align: center; overflow-wrap: anywhere; }
+  .progress-stats { gap: .4rem; }
+  .progress-stat { min-width: 0; padding-inline: .35rem; }
+}
+
+@media (max-width: 390px) {
+  .section-heading { align-items: flex-start; flex-wrap: wrap; }
+  .section-heading span { margin-left: auto; }
 }

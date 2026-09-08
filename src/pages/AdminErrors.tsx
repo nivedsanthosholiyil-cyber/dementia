@@ -7,6 +7,7 @@ import { Sheet } from '@/components/Sheet';
 import { supabase } from '@/lib/supabase';
 import { isCurrentUserAdmin } from '@/services/authService';
 import { errorLogger, type DiagnosticSeverity } from '@/services/errorLogger';
+import { getUnconfiguredAIStatuses } from '@/services/monitoring/aiMonitoring';
 
 interface SystemEvent {
   id: string;
@@ -192,6 +193,7 @@ export function AdminErrors() {
   const critical = events.filter((event) => event.severity === 'critical' && !event.resolved).length;
   const unresolved = events.filter((event) => !event.resolved).length;
   const recent = events.filter((event) => Date.now() - new Date(event.created_at).getTime() < 86_400_000).length;
+  const aiStatuses = getUnconfiguredAIStatuses();
 
   return (
     <>
@@ -218,6 +220,19 @@ export function AdminErrors() {
             ['Edge Functions', 'Not checked'],
           ].map(([name, status]) => <div className="card row-between" key={name}><span><strong>{name}</strong><small className="muted" style={{ display: 'block' }}>Current dashboard view</small></span><span className={`pill ${status === 'Operational' ? 'pill--green' : 'pill--amber'}`}>{status}</span></div>)}
         </div>
+
+        <section className="card stack-sm" aria-labelledby="ai-operations-title">
+          <div>
+            <h2 id="ai-operations-title" className="card-title">AI operations</h2>
+            <p className="muted">Both AI systems are placeholders. No provider health check or private AI request is configured.</p>
+          </div>
+          <div className="grid-2">
+            {aiStatuses.map((provider) => <div className="card row-between" key={provider.provider}>
+              <span><strong>{provider.label}</strong><small className="muted" style={{ display: 'block' }}>{provider.detail}</small></span>
+              <span className="pill pill--amber">Unknown</span>
+            </div>)}
+          </div>
+        </section>
 
         <div className="card stack-sm" aria-label="Diagnostics filters">
           <div className="grid-2">

@@ -159,6 +159,39 @@ create table public.patient_emergency_info (
   updated_at timestamptz not null default now()
 );
 
+-- Future AI job storage. Provider calls remain server-side and are not used by
+-- the current frontend until an AI adapter is explicitly connected.
+create table public.ai_analysis_jobs (
+  id uuid primary key default gen_random_uuid(),
+  patient_id uuid not null references public.patients(id) on delete cascade,
+  source_type text not null check (source_type in ('video', 'progress')),
+  source_reference text,
+  provider text not null,
+  model text,
+  status text not null default 'queued' check (status in ('queued', 'processing', 'completed', 'failed')),
+  request_id text not null,
+  retry_count smallint not null default 0 check (retry_count >= 0),
+  error_code text,
+  error_message text,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  started_at timestamptz,
+  completed_at timestamptz
+);
+
+create table public.ai_analysis_results (
+  id uuid primary key default gen_random_uuid(),
+  job_id uuid not null unique references public.ai_analysis_jobs(id) on delete cascade,
+  patient_id uuid not null references public.patients(id) on delete cascade,
+  provider text not null,
+  model text,
+  summary text,
+  metrics jsonb not null default '{}'::jsonb,
+  confidence numeric check (confidence is null or (confidence >= 0 and confidence <= 1)),
+  created_at timestamptz not null default now(),
+  completed_at timestamptz
+);
+
 create index caregiver_patient_patient_idx on public.caregiver_patient(patient_id, status);
 create index person_memories_patient_idx on public.person_memories(patient_id, created_at desc);
 create index game_sessions_patient_played_idx on public.game_sessions(patient_id, played_at desc);
@@ -168,6 +201,9 @@ create index difficulty_history_patient_game_idx on public.adaptive_difficulty_h
 create index reminders_patient_idx on public.reminders(patient_id);
 create index reminders_patient_enabled_time_idx on public.reminders(patient_id, time_local) where enabled = true;
 create index emergency_contacts_patient_idx on public.emergency_contacts(patient_id, priority);
+create index ai_analysis_jobs_patient_created_idx on public.ai_analysis_jobs(patient_id, created_at desc);
+create index ai_analysis_jobs_status_created_idx on public.ai_analysis_jobs(status, created_at desc);
+create index ai_analysis_results_patient_created_idx on public.ai_analysis_results(patient_id, created_at desc);
 
 -- Keep authorization helpers outside the exposed public schema. These helpers
 -- are only called by RLS policies and always require an authenticated caller.
@@ -362,6 +398,8 @@ alter table public.reminders enable row level security;
 alter table public.reminder_completions enable row level security;
 alter table public.emergency_contacts enable row level security;
 alter table public.patient_emergency_info enable row level security;
+alter table public.ai_analysis_jobs enable row level security;
+alter table public.ai_analysis_results enable row level security;
 
 create policy "read own profile" on public.profiles for select to authenticated
   using ((select auth.uid()) = id);
@@ -410,6 +448,11 @@ create policy "access emergency contacts" on public.emergency_contacts for selec
 create policy "linked users manage emergency contacts" on public.emergency_contacts for all to authenticated using (private.can_access_patient(patient_id)) with check (private.can_access_patient(patient_id));
 create policy "access emergency info" on public.patient_emergency_info for select to authenticated using (private.can_access_patient(patient_id));
 create policy "linked users manage emergency info" on public.patient_emergency_info for all to authenticated using (private.can_access_patient(patient_id)) with check (private.can_access_patient(patient_id));
+
+create policy "authorized users read ai jobs" on public.ai_analysis_jobs for select to authenticated
+  using (private.can_access_patient(patient_id));
+create policy "authorized users read ai results" on public.ai_analysis_results for select to authenticated
+  using (private.can_access_patient(patient_id));
 
 create policy "patient media read" on storage.objects for select to authenticated
   using (bucket_id = 'patient-media' and private.can_access_patient(split_part(name, '/', 1)::uuid));
