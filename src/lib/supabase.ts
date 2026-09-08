@@ -7,7 +7,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
  * Temporary local-debug switch. Keep cloud auth disabled while the rest of
  * the app is being debugged; flip this to true to restore Supabase login.
  */
-export const ENABLE_CLOUD_AUTH = false;
+export const ENABLE_CLOUD_AUTH = true;
 
 /**
  * Supabase is optional while the app is being used as an offline-first demo.
