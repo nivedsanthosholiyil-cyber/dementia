@@ -44,13 +44,13 @@ export function authErrorMessage(error: unknown, fallback: string): string {
   const message = error instanceof Error ? error.message : String(error ?? '');
   const normalized = message.toLowerCase();
   if (normalized.includes('email not confirmed')) {
-    return 'Your email still needs to be verified. Request a new code and try again.';
+    return 'Your account is not ready yet. Ask the administrator to finish account setup, then try again.';
   }
-  if (normalized.includes('invalid login credentials')) {
-    return 'The email or password is incorrect. Check both fields and try again.';
+  if (normalized.includes('invalid login credentials') || normalized.includes('email or password is incorrect')) {
+    return 'The username or password is incorrect. Check both fields and try again.';
   }
   if (normalized.includes('already registered') || normalized.includes('user already exists')) {
-    return 'An account with this email already exists. Try signing in instead.';
+    return 'An account with this username already exists. Try signing in instead.';
   }
   if (normalized.includes('rate limit') || normalized.includes('too many requests')) {
     return 'Too many attempts. Please wait a few minutes and try again.';

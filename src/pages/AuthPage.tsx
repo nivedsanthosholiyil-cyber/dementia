@@ -14,7 +14,7 @@ import {
   signUp,
 } from '@/services/authService';
 
-type AuthMode = 'sign-in' | 'sign-up' | 'forgot-password';
+type AuthMode = 'sign-in' | 'sign-up';
 
 export function AuthPage() {
   const location = useLocation();
@@ -46,12 +46,6 @@ export function AuthPage() {
     const normalizedUsername = username.trim().toLowerCase();
     if (!isValidUsername(normalizedUsername)) {
       setError('Username must be 3–32 characters using only letters, numbers, or underscores.');
-      return;
-    }
-    if (mode === 'forgot-password') {
-      setBusy(true);
-      setError('Password reset is unavailable in username-only mode.');
-      setBusy(false);
       return;
     }
     if (mode === 'sign-up') {
@@ -113,8 +107,8 @@ export function AuthPage() {
     }
   };
 
-  const heading = mode === 'sign-up' ? 'Create your account' : mode === 'forgot-password' ? 'Reset your password' : 'Sign in on this device.';
-  const submitLabel = mode === 'sign-up' ? 'Create account' : mode === 'forgot-password' ? 'Reset unavailable' : 'Continue';
+  const heading = mode === 'sign-up' ? 'Create your account' : 'Sign in on this device.';
+  const submitLabel = mode === 'sign-up' ? 'Create account' : 'Continue';
 
   return (
     <>
@@ -128,7 +122,7 @@ export function AuthPage() {
         </section>
 
         <section className="card auth-card stack-lg" aria-label="Authentication options">
-          {mode !== 'forgot-password' && <>
+          <>
             <div className="stack-sm">
               <h2 className="card-title">Use Google</h2>
               <p className="muted">Continue with your Google account.</p>
@@ -137,7 +131,7 @@ export function AuthPage() {
               </Button>
             </div>
             <div className="auth-divider" role="separator"><span>or use username</span></div>
-          </>}
+          </>
 
           <form className="stack" onSubmit={(event) => void submit(event)} noValidate>
             <div className="stack-sm">
@@ -167,8 +161,6 @@ export function AuthPage() {
           {message && <p className="banner banner--green" role="status" aria-live="polite">{message}</p>}
 
           <div className="auth-links">
-            {mode === 'sign-in' && <button type="button" className="auth-link" onClick={() => switchMode('forgot-password')}>Forgot password?</button>}
-            {mode === 'forgot-password' && <button type="button" className="auth-link" onClick={() => switchMode('sign-in')}>Back to Sign In</button>}
             {mode === 'sign-in' && <p className="muted">New to MemoryCare? <button type="button" className="auth-link" onClick={() => switchMode('sign-up')}>Create account</button></p>}
             {mode === 'sign-up' && <p className="muted">Already have an account? <button type="button" className="auth-link" onClick={() => switchMode('sign-in')}>Sign In</button></p>}
           </div>

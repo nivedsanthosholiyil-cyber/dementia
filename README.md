@@ -31,31 +31,30 @@ browser session persistence. It accepts `VITE_SUPABASE_URL` and
 3. In Supabase **Authentication > URL Configuration**, add the Vercel production URL already assigned to this project and local development URLs (for example `http://localhost:5173`) as redirect URLs.
 4. In Vercel **Project > Settings > Environment Variables**, set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` for Production, Preview, and Development, then redeploy. These are public browser keys; never set `service_role` or another secret as a `VITE_` variable.
 
-### Email/password configuration
+### Username/password configuration
 
-The app uses the `auth-otp` Edge Function for email/password + OTP
-authentication; it does not implement a second password store. In Supabase
-**Authentication > Providers**, enable Email and **Confirm email**. Configure
-the **Confirm signup** and **Magic Link** email templates to render
-`{{ .Token }}` as the six-digit OTP, not `{{ .ConfirmationURL }}`. Apply the
-SQL migrations and deploy the function using
-[`docs/otp-auth-setup.md`](docs/otp-auth-setup.md).
+The app's browser-facing form uses `username + password`. Supabase Auth still
+requires an email identity, so the client deterministically maps each valid
+username to an internal address under `users.memorycare.app`; the user never
+needs to enter or manage an email address. In Supabase **Authentication >
+Providers**, enable Email and disable **Confirm email** for this username-only
+flow. Google sign-in is unchanged.
 
-In **Authentication > URL Configuration**, set the Site URL to the deployed
-Vercel production URL and add that URL plus `/reset-password` to Redirect URLs.
-Also add `http://localhost:5173` and
-`http://localhost:5173/reset-password` for local testing. The app builds these
-redirects from `window.location.origin`, so the production host is never
-hard-coded in frontend code.
+If **Authentication > URL Configuration** is used for Google or password
+recovery, set the Site URL to the deployed Vercel production URL and add that
+URL plus `/reset-password` to Redirect URLs. Also add
+`http://localhost:5173` and `http://localhost:5173/reset-password` for local
+testing.
 
-Signup is `name + email + password + confirmation` → OTP verification →
-authenticated session. Login is `email + password` → password validation → OTP
-verification → authenticated session. The intermediate password-check session
-is never returned to the browser. The first verified sign-in for either provider
-uses the existing `profiles` trigger and role-selection flow. Choosing Patient
-creates the RLS-protected `patients` row with `auth.uid()`; choosing Caregiver
-loads only active `caregiver_patient` links. `My People` remains scoped by the
-existing `private.can_access_patient` helper and RLS policies.
+The first sign-in for either provider uses the existing `profiles` trigger and
+role-selection flow. Choosing Patient creates the RLS-protected `patients` row
+with `auth.uid()`; choosing Caregiver loads only active `caregiver_patient`
+links. `My People` remains scoped by the existing `private.can_access_patient`
+helper and RLS policies.
+
+Accounts created by the older email/OTP flow do not have the deterministic
+username identity and cannot be recovered from a username alone; those users
+must be migrated separately or recreated in username mode.
 
 ### Guest Mode
 
