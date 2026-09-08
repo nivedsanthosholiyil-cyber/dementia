@@ -45,7 +45,9 @@ const DEFAULTS: AppSettings = {
   userName: '',
   authenticated: false,
   guestMode: false,
-  theme: 'system',
+  // Light mode is the calm, predictable default for new users. Existing
+  // saved preferences still win in load(), and System/Dark remain available.
+  theme: 'light',
 };
 
 interface SettingsContextValue {
