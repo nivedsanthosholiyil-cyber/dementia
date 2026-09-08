@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import type { PatientRecord } from '@/types';
 
-export type NewPatient = Pick<PatientRecord, 'name'> & Pick<PatientRecord, 'date_of_birth' | 'notes' | 'share_with_caregiver'>;
+export type NewPatient = Pick<PatientRecord, 'name'> & Pick<PatientRecord, 'date_of_birth' | 'notes' | 'interests' | 'share_with_caregiver'>;
 
 export async function createPatient(patient: NewPatient) {
   if (!supabase) throw new Error('Supabase is not configured.');
@@ -14,9 +14,22 @@ export async function createPatient(patient: NewPatient) {
     name,
     date_of_birth: patient.date_of_birth ?? null,
     notes: patient.notes ?? null,
+    interests: patient.interests ?? null,
     share_with_caregiver: patient.share_with_caregiver ?? false,
     auth_user_id: authData.user.id,
   }).select().single();
+  if (error) throw error;
+  return data as PatientRecord;
+}
+
+export async function updatePatient(patientId: string, changes: Pick<PatientRecord, 'name' | 'date_of_birth' | 'notes' | 'interests'>) {
+  if (!supabase) throw new Error('Supabase is not configured.');
+  const { data, error } = await supabase.from('patients').update({
+    name: changes.name.trim(),
+    date_of_birth: changes.date_of_birth ?? null,
+    notes: changes.notes ?? null,
+    interests: changes.interests ?? null,
+  }).eq('id', patientId).select().single();
   if (error) throw error;
   return data as PatientRecord;
 }

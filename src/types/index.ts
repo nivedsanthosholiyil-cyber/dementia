@@ -15,6 +15,7 @@ export interface PatientRecord {
   profile_photo_path?: string | null;
   date_of_birth?: string | null;
   notes?: string | null;
+  interests?: string | null;
   share_with_caregiver: boolean;
 }
 

@@ -398,6 +398,13 @@ const en = {
     notesPlaceholder: 'Helpful routines, preferences, or reminders…',
     save: 'Save profile',
     cancel: 'Cancel editing',
+    cloudTitle: 'Your patient profile',
+    cloudSubtitle: 'Keep age, interests, and care notes together for a more personal experience.',
+    loading: 'Loading patient details…',
+    saved: 'Patient details saved.',
+    loadError: 'We could not load patient details. Please try again.',
+    saveError: 'We could not save patient details. Please try again.',
+    ageError: 'Enter an age from 1 to 120, or leave it blank.',
   },
   familiar: {
     title: 'Who Is This Person?',
