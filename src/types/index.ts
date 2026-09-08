@@ -88,6 +88,9 @@ export interface PatientProfile {
   name: string;
   createdAt: number;
   shareWithCaregiver: boolean;
+  dateOfBirth?: string | null;
+  notes?: string;
+  interests?: string;
 }
 
 export interface FamilyMember {

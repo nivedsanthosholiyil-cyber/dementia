@@ -7,10 +7,8 @@ import { Icon } from '@/components/Icon';
 import { CardSkeleton } from '@/components/Skeleton';
 import { ContentState } from '@/components/ContentState';
 
-const WEEK_DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-
 export function Progress() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const navigate = useNavigate();
   const { summary, loading, error, reload } = useProgressData();
   const readScreen = `${t('progress.title')}. ${t('progress.subtitle')}`;
@@ -20,7 +18,7 @@ export function Progress() {
   }
 
   if (error) {
-    return <><AppHeader subtitle={t('nav.progress')} readText={readScreen} /><main className="page"><ContentState title="Progress is unavailable" detail={error} tone="amber" action={{ label: 'Try again', onClick: () => void reload() }} /></main></>;
+    return <><AppHeader subtitle={t('nav.progress')} readText={readScreen} /><main className="page"><ContentState title={t('progress.unavailable')} detail={error} tone="amber" action={{ label: t('common.retry'), onClick: () => void reload() }} /></main></>;
   }
 
   const completed = summary?.gamesCompleted ?? 0;
@@ -32,6 +30,12 @@ export function Progress() {
     : completed === 1
       ? t('progress.oneActivity')
       : t('progress.playedThisWeek', { n: completed });
+  const activityPoints = completed + activeDays * 2 + (summary?.streakDays ?? 0);
+  const activityLevel = Math.min(4, 1 + Math.floor(activityPoints / 5));
+  const levelStart = (activityLevel - 1) * 5;
+  const levelProgress = activityLevel === 4 ? 100 : Math.min(100, Math.round(((activityPoints - levelStart) / 5) * 100));
+  const levelName = t(`progress.level${activityLevel}`);
+  const weekFormatter = new Intl.DateTimeFormat(lang, { weekday: 'short' });
 
   return (
     <>
@@ -55,12 +59,26 @@ export function Progress() {
         <section className="progress-week" aria-labelledby="week-title">
           <div className="section-heading"><h2 id="week-title">{t('progress.week')}</h2><span>{activeDays} {activeDays === 1 ? t('progress.day') : t('progress.days')} {t('progress.active')}</span></div>
           <div className="week-dots" role="img" aria-label={`${activeDays} ${activeDays === 1 ? t('progress.day') : t('progress.days')} ${t('progress.thisWeek').toLowerCase()}`}>
-            {WEEK_DAYS.map((day, index) => {
+            {weekly.map((dayData, index) => {
               const active = (weekly[index]?.gamesCompleted ?? 0) > 0;
-              return <div className={`week-dots__day ${active ? 'is-active' : ''}`} key={`${day}-${index}`}><span aria-hidden="true">{active ? <Icon name="check" size={18} /> : ''}</span><small>{day}</small></div>;
+              const day = weekFormatter.format(new Date(`${dayData.date}T12:00:00`));
+              return <div className={`week-dots__day ${active ? 'is-active' : ''}`} key={dayData.date}><span aria-hidden="true">{active ? <Icon name="check" size={18} /> : ''}</span><small>{day.slice(0, 3)}</small></div>;
             })}
           </div>
           <p className="text-muted">{t('progress.activityMark')}</p>
+        </section>
+
+        <section className="progress-level card" aria-labelledby="activity-level-title">
+          <div className="row-between"><div><p className="eyebrow">{t('progress.activityLevel')}</p><h2 id="activity-level-title">{levelName}</h2></div><span className="progress-level__badge">{t('progress.levelValue', { n: activityLevel })}</span></div>
+          <p className="text-muted">{t(`progress.level${activityLevel}Body`)}</p>
+          <div className="progress-level__track" role="progressbar" aria-valuemin={1} aria-valuemax={4} aria-valuenow={activityLevel} aria-valuetext={levelName}><div className="progress-level__fill" style={{ width: `${levelProgress}%` }} /></div>
+          <div className="progress-level__scale"><span>{t('progress.levelStart')}</span><span>{activityLevel === 4 ? t('progress.levelComplete') : t('progress.nextLevel', { n: activityLevel + 1 })}</span></div>
+        </section>
+
+        <section className="progress-stats" aria-label={t('progress.stats')}>
+          <div className="progress-stat"><strong>{completed}</strong><span>{t('progress.gamesCompleted')}</span></div>
+          <div className="progress-stat"><strong>{activeDays}</strong><span>{t('progress.activeDaysShort')}</span></div>
+          <div className="progress-stat"><strong>{summary?.streakDays ?? 0}</strong><span>{t('progress.streakShort')}</span></div>
         </section>
 
         <section className="progress-note">

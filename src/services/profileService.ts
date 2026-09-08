@@ -21,8 +21,16 @@ const fromBase64url = (value: string) => {
 export async function profiles(): Promise<PatientProfile[]> {
   return storageService.getProfiles();
 }
-export async function createProfile(name: string): Promise<PatientProfile> {
-  const profile = { id: makeId(), name: name.trim(), createdAt: Date.now(), shareWithCaregiver: false };
+export async function createProfile(name: string, details: Pick<PatientProfile, 'dateOfBirth' | 'notes' | 'interests'> = {}): Promise<PatientProfile> {
+  const profile: PatientProfile = {
+    id: makeId(),
+    name: name.trim(),
+    createdAt: Date.now(),
+    shareWithCaregiver: false,
+    dateOfBirth: details.dateOfBirth ?? null,
+    notes: details.notes?.trim() ?? '',
+    interests: details.interests?.trim() ?? '',
+  };
   await storageService.putProfile(profile);
   return profile;
 }
